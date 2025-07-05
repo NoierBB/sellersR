@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { faBell, faMoon, faSun } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import AuthModal from './AuthModal';
+import { Link } from 'react-router-dom';
 
 export default function Navbar() {
   const [darkMode, setDarkMode] = useState(false);
@@ -30,11 +31,12 @@ export default function Navbar() {
     <>
       <nav>
         <ul className="nav-links">
-          <li><a href="#">Главная</a></li>
+          <li><Link to="/">Главная</Link></li>
           <li><a href="#">Клиенты</a></li>
           <li><a href="#">Заказы</a></li>
           <li><a href="#">Аналитика</a></li>
           <li><a href="#">Оптимизация</a></li>
+          <li><Link to="/about">О нас</Link></li>
         </ul>
         
         <div className="nav-right">

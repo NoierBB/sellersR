@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import Navbar from './components/Navbar';
@@ -7,10 +8,14 @@ import FeatureCard from './components/FeatureCard';
 import CtaSection from './components/CtaSection';
 import SocialPopup from './components/SocialPopup';
 import AboutPage from './components/AboutPage';
+// import Analytic from './components/Analitic';
+
 
 function HomePage() {
+
   return (
     <>
+    
       <MainBanner />
       <div className="features-container">
         <div className="features">
@@ -30,6 +35,7 @@ function HomePage() {
         <CtaSection />
       </div>
       <SocialPopup />
+ 
     </>
   );
 }
@@ -41,7 +47,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
+        {/* <Route path='/analitic' element={<AnalyticsDashboard/>}/> */}
       </Routes>
     </Router>
   );
 }
+

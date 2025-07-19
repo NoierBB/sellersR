@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import AuthModal from './AuthModal';
 import { Link } from 'react-router-dom';
 
+
 export default function Navbar() {
   const [darkMode, setDarkMode] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -34,7 +35,7 @@ export default function Navbar() {
           <li><Link to="/">Главная</Link></li>
           <li><a href="#">Клиенты</a></li>
           <li><a href="#">Заказы</a></li>
-          <li><a href="#">Аналитика</a></li>
+          {/* <li><Link to="/a">Аналитика</Link></li> */}
           <li><a href="#">Оптимизация</a></li>
           <li><Link to="/about">О нас</Link></li>
         </ul>

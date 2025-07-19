@@ -3,33 +3,87 @@ import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export default function AuthModal({ isOpen, onClose }) {
-  const [isLogin, setIsLogin] = useState(true); // true - вход, false - регистрация
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    first_name: '', // Изменили на first_name
+    last_name: '',  // Изменили на last_name
+    phoneNumber: '',
+    rememberMe: false
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!isLogin && password !== confirmPassword) {
-      alert('Пароли не совпадают');
-      return;
-    }
+    setIsLoading(true);
+    setError('');
 
-    const message = isLogin 
-      ? `Вход с email: ${email}`
-      : `Регистрация: ${name}, ${email}`;
-    
-    alert(message);
-    onClose();
+    try {
+      // Валидация данных
+      if (!isLogin) {
+        if (!formData.first_name.trim()) throw new Error('Имя обязательно для заполнения');
+        if (!formData.last_name.trim()) throw new Error('Фамилия обязательна для заполнения');
+        if (formData.password !== formData.confirmPassword) throw new Error('Пароли не совпадают');
+      }
+
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+      const body = isLogin
+        ? {
+            email: formData.email,
+            password: formData.password,
+            rememberMe: formData.rememberMe
+          }
+        : {
+            email: formData.email,
+            password: formData.password,
+            firstName: formData.first_name.trim(), // Использовать firstName
+            lastName: formData.last_name.trim(),  // Использовать lastName
+            phone_number: formData.phoneNumber.trim()
+          };
+      console.log(formData.first_name.trim());
+      const response = await fetch(`http://localhost:8080${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      console.log(body);
+
+      const data = await response.json();
+      console.log(data);
+
+      if (!response.ok) {
+        throw new Error(data.message || data.detail || `Ошибка ${isLogin ? 'входа' : 'регистрации'}`);
+      }
+
+      if (isLogin) {
+        localStorage.setItem('authToken', data.token);
+        onClose();
+      } else {
+        alert('Регистрация успешна!');
+        setIsLogin(true);
+        setFormData(prev => ({ ...prev, firstName: '', last_name: '', phoneNumber: '' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('Ошибка:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    if (e.target === e.currentTarget) onClose();
   };
 
   if (!isOpen) return null;
@@ -40,84 +94,147 @@ export default function AuthModal({ isOpen, onClose }) {
         <button className="close-btn" onClick={onClose}>
           <FontAwesomeIcon icon={faTimes} />
         </button>
-        
-        <h2>{isLogin ? 'Вход в аккаунт' : 'Регистрация'}</h2>
-        
+
         <form onSubmit={handleSubmit}>
+          <h2>{isLogin ? 'Вход в аккаунт' : 'Регистрация'}</h2>
+
           {!isLogin && (
-            <div className="form-group">
-              <label htmlFor="name">Имя</label>
-              <input
-                type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
+            <>
+              <div className="form-group">
+                <label htmlFor="first_name">Имя*</label>
+                <input
+                  type="text"
+                  id="first_name"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="last_name">Фамилия*</label>
+                <input
+                  type="text"
+                  id="last_name"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </>
           )}
-          
+
+
+
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Email*</label>
             <input
               type="email"
               id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               required
             />
           </div>
-          
+
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="phoneNumber">Номер телефона</label>
+              <input
+                type="tel"
+                id="phoneNumber"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                pattern="\+?[0-9\s\-\(\)]+"
+                placeholder="+7 (XXX) XXX-XX-XX"
+              />
+            </div>
+          )}
+
           <div className="form-group">
-            <label htmlFor="password">{isLogin ? 'Пароль' : 'Придумайте пароль'}</label>
+            <label htmlFor="password">
+              {isLogin ? 'Пароль*' : 'Придумайте пароль*'}
+            </label>
             <input
               type="password"
               id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
               required
               minLength={6}
             />
           </div>
-          
+
           {!isLogin && (
             <div className="form-group">
-              <label htmlFor="confirmPassword">Повторите пароль</label>
+              <label htmlFor="confirmPassword">Повторите пароль*</label>
               <input
                 type="password"
                 id="confirmPassword"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
                 required
                 minLength={6}
               />
             </div>
           )}
-          
+
           {isLogin && (
             <div className="form-options">
               <label>
                 <input
                   type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
                 />
                 Запомнить меня
               </label>
-              <a href="#" className="forgot-password">Забыли пароль?</a>
+              <a href="#" className="forgot-password">
+                Забыли пароль?
+              </a>
             </div>
           )}
-          
-          <button type="submit" className="auth-submit-btn">
-            {isLogin ? 'Войти' : 'Зарегистрироваться'}
+
+          {error && <div className="error-message">{error}</div>}
+
+          <button
+            type="submit"
+            className="auth-submit-btn"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Загрузка...' : isLogin ? 'Войти' : 'Зарегистрироваться'}
           </button>
         </form>
-        
+
         <div className="auth-footer">
           {isLogin ? (
-            <>Нет аккаунта? <a href="#" onClick={() => setIsLogin(false)}>Зарегистрироваться</a></>
+            <button
+              type="button"
+              className="auth-switch-btn"
+              onClick={() => {
+                setIsLogin(false);
+                setError('');
+              }}
+            >
+              Нет аккаунта? Зарегистрироваться
+            </button>
           ) : (
-            <>Уже есть аккаунт? <a href="#" onClick={() => setIsLogin(true)}>Войти</a></>
+            <button
+              type="button"
+              className="auth-switch-btn"
+              onClick={() => {
+                setIsLogin(true);
+                setError('');
+              }}
+            >
+              Уже есть аккаунт? Войти
+            </button>
           )}
         </div>
       </div>

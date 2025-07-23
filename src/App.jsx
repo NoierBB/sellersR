@@ -8,14 +8,28 @@ import FeatureCard from './components/FeatureCard';
 import CtaSection from './components/CtaSection';
 import SocialPopup from './components/SocialPopup';
 import AboutPage from './components/AboutPage';
-// import Analytic from './components/Analitic';
+import Analytics from './components/Analitic';
+import SubscriptionPage from './components/SubscriptionPage';
+import ProfilePage from './components/ProfilePage';
 
+// Set up axios defaults
+axios.defaults.baseURL = 'http://localhost:8080';
+axios.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => {
+    return Promise.reject(error);
+  }
+);
 
 function HomePage() {
-
   return (
     <>
-    
       <MainBanner />
       <div className="features-container">
         <div className="features">
@@ -35,7 +49,6 @@ function HomePage() {
         <CtaSection />
       </div>
       <SocialPopup />
- 
     </>
   );
 }
@@ -47,7 +60,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
-        {/* <Route path='/analitic' element={<AnalyticsDashboard/>}/> */}
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/subscription" element={<SubscriptionPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </Router>
   );

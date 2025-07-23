@@ -4,8 +4,8 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/wilberis_analytics
-    username: postgres
-    password: root
+    username: your_db_username
+    password: your_db_password
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -25,13 +25,13 @@ spring:
       allow-credentials: true
 
 jwt:
-  secret: "WilberisProjectSecretKeyForJWT2024!@#$%^&*()_+=-{}[]|\\:;\"'<>,.?/~`"
+  secret: "your_jwt_secret_key_here"
   expiration: 86400000 # 24 hours
 
 telegram:
   bot:
-    token: ${TELEGRAM_BOT_TOKEN:default_token_for_dev}
-    username: "SellersWilberis_bot"
+    token: ${TELEGRAM_BOT_TOKEN:your_telegram_bot_token_here}
+    username: "your_bot_username"
 
 wildberries:
   api:

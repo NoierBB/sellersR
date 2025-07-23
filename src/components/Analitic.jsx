@@ -13,28 +13,31 @@ export default function Analytics() {
   const [newApiKey, setNewApiKey] = useState('');
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [showApiKeyForm, setShowApiKeyForm] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const API_BASE_URL = 'http://localhost:8080/api';
 
   useEffect(() => {
-    checkApiKey();
-    getSubscriptionInfo();
+    // Проверяем, авторизован ли пользователь
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsAuthenticated(true);
+      checkApiKey();
+      getSubscriptionInfo();
+    }
   }, []);
 
   useEffect(() => {
-    if (apiKeyStatus.hasKey) {
+    if (apiKeyStatus.hasKey && subscriptionInfo?.isActive) {
       fetchData(activeTab);
     }
-  }, [activeTab, period, apiKeyStatus.hasKey]);
+  }, [activeTab, period, apiKeyStatus.hasKey, subscriptionInfo?.isActive]);
 
   const checkApiKey = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await axios.get(`${API_BASE_URL}/auth/api-key`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      console.log('Checking API key status...');
+      const response = await axios.get(`${API_BASE_URL}/auth/api-key`);
+      console.log('API key status response:', response.data);
 
       if (response.data.success) {
         setApiKeyStatus({
@@ -49,12 +52,9 @@ export default function Analytics() {
 
   const getSubscriptionInfo = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await axios.get(`${API_BASE_URL}/subscription/info`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      console.log('Fetching subscription info...');
+      const response = await axios.get(`${API_BASE_URL}/subscription/info`);
+      console.log('Subscription info response:', response.data);
 
       if (response.data.success) {
         setSubscriptionInfo(response.data.subscription);
@@ -71,7 +71,7 @@ export default function Analytics() {
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
+      console.log(`Fetching ${tab} data for period ${period} days...`);
       let endpoint = '';
       
       switch (tab) {
@@ -91,9 +91,8 @@ export default function Analytics() {
           endpoint = `/excel-analytics/financial-table?days=${period}`;
       }
       
-      const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_BASE_URL}${endpoint}`);
+      console.log(`${tab} data response:`, response.data);
       
       if (response.data.success) {
         setData(response.data);
@@ -101,6 +100,7 @@ export default function Analytics() {
         setError(response.data.message || 'Ошибка получения данных');
       }
     } catch (err) {
+      console.error(`Error fetching ${tab} data:`, err);
       setError(err.response?.data?.message || 'Произошла ошибка при загрузке данных');
     } finally {
       setLoading(false);
@@ -113,12 +113,12 @@ export default function Analytics() {
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
+      console.log('Setting API key...');
       const response = await axios.post(
         `${API_BASE_URL}/auth/set-api-key`,
-        { apiKey: newApiKey },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { apiKey: newApiKey }
       );
+      console.log('Set API key response:', response.data);
       
       if (response.data.success) {
         setApiKeyStatus({
@@ -132,6 +132,7 @@ export default function Analytics() {
         setError(response.data.message || 'Ошибка установки API ключа');
       }
     } catch (err) {
+      console.error('Error setting API key:', err);
       setError(err.response?.data?.message || 'Произошла ошибка при установке API ключа');
     } finally {
       setLoading(false);
@@ -140,10 +141,9 @@ export default function Analytics() {
 
   const handleRemoveApiKey = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.delete(`${API_BASE_URL}/auth/api-key`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      console.log('Removing API key...');
+      const response = await axios.delete(`${API_BASE_URL}/auth/api-key`);
+      console.log('Remove API key response:', response.data);
       
       if (response.data.success) {
         setApiKeyStatus({
@@ -153,9 +153,23 @@ export default function Analytics() {
         setData(null);
       }
     } catch (err) {
+      console.error('Error removing API key:', err);
       setError(err.response?.data?.message || 'Произошла ошибка при удалении API ключа');
     }
   };
+
+  const renderLoginPrompt = () => (
+    <div className="login-prompt">
+      <h3>Требуется авторизация</h3>
+      <p>Для доступа к аналитике необходимо авторизоваться</p>
+      <button 
+        className="primary-button" 
+        onClick={() => window.location.href = '/'}
+      >
+        На главную
+      </button>
+    </div>
+  );
 
   const renderNoSubscriptionMessage = () => (
     <div className="no-subscription">
@@ -480,6 +494,10 @@ export default function Analytics() {
   };
 
   const renderContent = () => {
+    if (!isAuthenticated) {
+      return renderLoginPrompt();
+    }
+    
     if (!subscriptionInfo?.isActive) {
       return renderNoSubscriptionMessage();
     }

@@ -24,21 +24,62 @@ export default function ProfilePage() {
   const API_BASE_URL = 'http://localhost:8080/api';
 
   useEffect(() => {
+    // Проверяем наличие токена
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Для доступа к профилю необходимо авторизоваться');
+      setLoading(false);
+      return;
+    }
+
+    // Получаем данные пользователя из localStorage
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        setFormData({
+          firstName: parsedUser.firstName || '',
+          lastName: parsedUser.lastName || '',
+          phoneNumber: parsedUser.phoneNumber || '',
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+
+    // Делаем запрос к API для получения актуальных данных
     fetchUserProfile();
     checkApiKey();
   }, []);
 
   const fetchUserProfile = async () => {
     try {
+      console.log('Fetching user profile...');
+      // Используем POST запрос к /api/auth/login с пустым телом для получения данных пользователя
       const token = localStorage.getItem('token');
       if (!token) {
-        window.location.href = '/';
+        setError('Для доступа к профилю необходимо авторизоваться');
+        setLoading(false);
         return;
       }
 
-      const response = await axios.get(`${API_BASE_URL}/auth/user-info`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Получаем email из localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const email = userData.email;
+
+      if (!email) {
+        setError('Не удалось определить email пользователя');
+        setLoading(false);
+        return;
+      }
+
+      // Делаем запрос к API
+      const response = await axios.get(`${API_BASE_URL}/auth/user-info`);
+      console.log('User profile response:', response.data);
 
       if (response.data.success) {
         setUser(response.data.user);
@@ -50,9 +91,14 @@ export default function ProfilePage() {
           newPassword: '',
           confirmPassword: ''
         });
+
+        // Обновляем данные в localStorage
+        localStorage.setItem('user', JSON.stringify(response.data.user));
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Ошибка получения данных профиля');
+      console.error('Error fetching user profile:', err);
+      // Если запрос не удался, используем данные из localStorage
+      // Не устанавливаем ошибку, чтобы не блокировать пользователя
     } finally {
       setLoading(false);
     }
@@ -60,12 +106,9 @@ export default function ProfilePage() {
 
   const checkApiKey = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await axios.get(`${API_BASE_URL}/auth/api-key`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      console.log('Checking API key...');
+      const response = await axios.get(`${API_BASE_URL}/auth/api-key`);
+      console.log('API key response:', response.data);
 
       if (response.data.success && response.data.hasApiKey) {
         setApiKey(response.data.apiKey);
@@ -89,16 +132,16 @@ export default function ProfilePage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      console.log('Updating profile...');
       const response = await axios.post(
         `${API_BASE_URL}/auth/update-profile`,
         {
           firstName: formData.firstName,
           lastName: formData.lastName,
           phoneNumber: formData.phoneNumber
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
+      console.log('Update profile response:', response.data);
 
       if (response.data.success) {
         setSuccess('Профиль успешно обновлен');
@@ -111,12 +154,14 @@ export default function ProfilePage() {
         setIsEditing(false);
 
         // Update localStorage user data
-        const userData = JSON.parse(localStorage.getItem('user'));
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
         userData.firstName = formData.firstName;
         userData.lastName = formData.lastName;
+        userData.phoneNumber = formData.phoneNumber;
         localStorage.setItem('user', JSON.stringify(userData));
       }
     } catch (err) {
+      console.error('Error updating profile:', err);
       setError(err.response?.data?.message || 'Ошибка обновления профиля');
     } finally {
       setLoading(false);
@@ -136,15 +181,15 @@ export default function ProfilePage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      console.log('Changing password...');
       const response = await axios.post(
         `${API_BASE_URL}/auth/change-password`,
         {
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
+      console.log('Change password response:', response.data);
 
       if (response.data.success) {
         setSuccess('Пароль успешно изменен');
@@ -157,6 +202,7 @@ export default function ProfilePage() {
         });
       }
     } catch (err) {
+      console.error('Error changing password:', err);
       setError(err.response?.data?.message || 'Ошибка изменения пароля');
     } finally {
       setLoading(false);
@@ -170,17 +216,18 @@ export default function ProfilePage() {
     setLoading(true);
     
     try {
-      const token = localStorage.getItem('token');
+      console.log('Setting API key...');
       const response = await axios.post(
         `${API_BASE_URL}/auth/set-api-key`,
-        { apiKey },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { apiKey }
       );
+      console.log('Set API key response:', response.data);
       
       if (response.data.success) {
         setSuccess('API ключ Wildberries успешно установлен');
       }
     } catch (err) {
+      console.error('Error setting API key:', err);
       setError(err.response?.data?.message || 'Ошибка установки API ключа');
     } finally {
       setLoading(false);
@@ -193,16 +240,16 @@ export default function ProfilePage() {
     setLoading(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.delete(`${API_BASE_URL}/auth/api-key`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      console.log('Removing API key...');
+      const response = await axios.delete(`${API_BASE_URL}/auth/api-key`);
+      console.log('Remove API key response:', response.data);
       
       if (response.data.success) {
         setSuccess('API ключ Wildberries успешно удален');
         setApiKey('');
       }
     } catch (err) {
+      console.error('Error removing API key:', err);
       setError(err.response?.data?.message || 'Ошибка удаления API ключа');
     } finally {
       setLoading(false);
@@ -214,6 +261,22 @@ export default function ProfilePage() {
       <div className="profile-page loading">
         <FontAwesomeIcon icon={faSpinner} spin />
         <p>Загрузка профиля...</p>
+      </div>
+    );
+  }
+
+  // Если нет данных пользователя и нет токена, показываем сообщение о необходимости авторизации
+  if (!user && !localStorage.getItem('token')) {
+    return (
+      <div className="profile-page">
+        <h1>Профиль пользователя</h1>
+        <div className="error-message">Для доступа к профилю необходимо авторизоваться</div>
+        <button 
+          className="primary-button" 
+          onClick={() => window.location.href = '/'}
+        >
+          На главную
+        </button>
       </div>
     );
   }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope, faLock, faUser, faPhone } from '@fortawesome/free-solid-svg-icons';
+import { faEnvelope, faLock, faUser, faPhone, faCopy } from '@fortawesome/free-solid-svg-icons';
 
 export default function AuthModal({ isOpen, onClose }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,9 +15,13 @@ export default function AuthModal({ isOpen, onClose }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
   const [needVerification, setNeedVerification] = useState(false);
   const [token, setToken] = useState('');
+  const [telegramBot, setTelegramBot] = useState('');
+  const [displayVerificationCode, setDisplayVerificationCode] = useState('');
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [verificationInProgress, setVerificationInProgress] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -26,10 +30,6 @@ export default function AuthModal({ isOpen, onClose }) {
       ...formData,
       [e.target.name]: e.target.value
     });
-  };
-
-  const handleVerificationChange = (e) => {
-    setVerificationCode(e.target.value);
   };
 
   const handleSubmit = async (e) => {
@@ -46,14 +46,32 @@ export default function AuthModal({ isOpen, onClose }) {
           password: formData.password
         });
 
+        console.log('Login response:', response.data);
+
         if (response.data.success) {
           setSuccess('Авторизация успешна!');
-          localStorage.setItem('token', response.data.token);
+          // Сохраняем токен с префиксом Bearer
+          const authToken = response.data.token;
+          localStorage.setItem('token', authToken);
           localStorage.setItem('user', JSON.stringify(response.data.user));
-          setTimeout(() => {
-            onClose();
-            window.location.reload();
-          }, 1000);
+          setUserEmail(formData.email);
+          
+          // Проверяем, требуется ли верификация
+          if (response.data.user && !response.data.user.verified) {
+            setNeedVerification(true);
+            setToken(authToken);
+            if (response.data.telegramBot) {
+              setTelegramBot(response.data.telegramBot);
+            }
+            if (response.data.verificationCode) {
+              setDisplayVerificationCode(response.data.verificationCode);
+            }
+          } else {
+            setTimeout(() => {
+              onClose();
+              window.location.reload();
+            }, 1000);
+          }
         }
       } else {
         // Register logic
@@ -65,43 +83,149 @@ export default function AuthModal({ isOpen, onClose }) {
           phoneNumber: formData.phoneNumber
         });
 
+        console.log('Register response:', response.data);
+
         if (response.data.success) {
-          setSuccess('Регистрация успешна! Пожалуйста, введите код верификации.');
+          setSuccess('Регистрация успешна! Пожалуйста, скопируйте код верификации и отправьте его в Telegram бот.');
           setNeedVerification(true);
-          setToken(response.data.token);
-          localStorage.setItem('token', response.data.token);
+          // Сохраняем токен с префиксом Bearer
+          const authToken = response.data.token;
+          setToken(authToken);
+          localStorage.setItem('token', authToken);
+          setUserEmail(formData.email);
+          
+          // Сохраняем информацию о телеграм боте
+          if (response.data.telegramBot) {
+            setTelegramBot(response.data.telegramBot);
+          }
+          
+          // Показываем верификационный код
+          if (response.data.verificationCode) {
+            console.log('Verification code:', response.data.verificationCode);
+            setDisplayVerificationCode(response.data.verificationCode);
+          }
         }
       }
     } catch (err) {
+      console.error('Auth error:', err);
       setError(err.response?.data?.message || 'Произошла ошибка. Пожалуйста, попробуйте снова.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerification = async (e) => {
-    e.preventDefault();
+  const checkVerificationStatus = async () => {
+    if (verificationInProgress) return;
+    
+    setVerificationInProgress(true);
     setError('');
-    setLoading(true);
-
+    
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/verify`,
-        { verificationCode },
-        { headers: { Authorization: `Bearer ${token || localStorage.getItem('token')}` } }
-      );
-
-      if (response.data.success) {
+      // Повторно выполняем вход с теми же учетными данными
+      // для получения обновленной информации о пользователе
+      const email = userEmail || JSON.parse(localStorage.getItem('user'))?.email;
+      
+      if (!email) {
+        setError('Не удалось определить email пользователя');
+        setVerificationInProgress(false);
+        return;
+      }
+      
+      console.log('Checking verification status for user:', email);
+      
+      // Используем повторный вход для проверки статуса верификации
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+        email: email,
+        password: formData.password || '___dummy___' // Если пароль не сохранен, используем заглушку
+      });
+      
+      console.log('Verification status response:', response.data);
+      
+      // Проверяем, верифицирован ли пользователь
+      if (response.data.success && response.data.user && response.data.user.verified) {
         setSuccess('Верификация прошла успешно!');
+        // Обновляем данные пользователя в localStorage
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
         setTimeout(() => {
           onClose();
           window.location.reload();
         }, 1000);
+      } else {
+        setError('Верификация еще не завершена. Пожалуйста, отправьте код в Telegram бот.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Неверный код верификации.');
+      console.error('Verification status check error:', err);
+      
+      // Проверяем, содержит ли ошибка информацию о неверном пароле
+      if (err.response?.data?.message?.includes('password')) {
+        // Если ошибка связана с паролем, это значит, что пользователь существует,
+        // но мы не можем авторизоваться из-за отсутствия пароля
+        setError('Для проверки статуса верификации введите пароль');
+        
+        // Добавляем поле для ввода пароля
+        setShowPasswordInput(true);
+      } else {
+        setError('Ошибка при проверке статуса верификации. Попробуйте позже.');
+      }
     } finally {
-      setLoading(false);
+      setVerificationInProgress(false);
+    }
+  };
+
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
+  const [verificationPassword, setVerificationPassword] = useState('');
+
+  const handleVerificationWithPassword = async () => {
+    if (verificationInProgress || !verificationPassword) return;
+    
+    setVerificationInProgress(true);
+    setError('');
+    
+    try {
+      const email = userEmail || JSON.parse(localStorage.getItem('user'))?.email;
+      
+      if (!email) {
+        setError('Не удалось определить email пользователя');
+        setVerificationInProgress(false);
+        return;
+      }
+      
+      // Используем введенный пароль для проверки статуса верификации
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+        email: email,
+        password: verificationPassword
+      });
+      
+      console.log('Verification with password response:', response.data);
+      
+      if (response.data.success && response.data.user && response.data.user.verified) {
+        setSuccess('Верификация прошла успешно!');
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        setTimeout(() => {
+          onClose();
+          window.location.reload();
+        }, 1000);
+      } else {
+        setError('Верификация еще не завершена. Пожалуйста, отправьте код в Telegram бот.');
+      }
+    } catch (err) {
+      console.error('Verification with password error:', err);
+      setError(err.response?.data?.message || 'Ошибка при проверке статуса верификации.');
+    } finally {
+      setVerificationInProgress(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (displayVerificationCode) {
+      navigator.clipboard.writeText(displayVerificationCode)
+        .then(() => {
+          setCodeCopied(true);
+          setTimeout(() => setCodeCopied(false), 2000);
+        })
+        .catch(err => console.error('Ошибка копирования:', err));
     }
   };
 
@@ -217,24 +341,64 @@ export default function AuthModal({ isOpen, onClose }) {
             {error && <div className="error-message">{error}</div>}
             {success && <div className="success-message">{success}</div>}
             
-            <p>Введите код верификации, отправленный на ваш email или в Telegram бот @SellersWilberis_bot</p>
+            <p>Для верификации аккаунта отправьте код в Telegram бот {telegramBot}</p>
             
-            <form onSubmit={handleVerification}>
-              <div className="form-group">
-                <label htmlFor="verificationCode">Код верификации</label>
-                <input
-                  type="text"
-                  id="verificationCode"
-                  value={verificationCode}
-                  onChange={handleVerificationChange}
-                  required
-                />
+            {displayVerificationCode && (
+              <div className="verification-code-display">
+                <div className="code-container">
+                  <span className="code-label">Ваш код верификации:</span>
+                  <div className="code-value">
+                    <span>{displayVerificationCode}</span>
+                    <button 
+                      className="copy-btn" 
+                      onClick={copyToClipboard}
+                      title="Копировать код"
+                    >
+                      <FontAwesomeIcon icon={faCopy} />
+                    </button>
+                  </div>
+                  {codeCopied && <span className="copy-success">Скопировано!</span>}
+                </div>
+                <p className="code-instruction">
+                  Скопируйте этот код и отправьте его боту {telegramBot} в Telegram для верификации
+                </p>
               </div>
-              
-              <button type="submit" className="submit-btn" disabled={loading}>
-                {loading ? 'Проверка...' : 'Подтвердить'}
-              </button>
-            </form>
+            )}
+            
+            {showPasswordInput ? (
+              <div className="verification-password-form">
+                <div className="form-group">
+                  <label htmlFor="verificationPassword">
+                    <FontAwesomeIcon icon={faLock} />
+                    Введите пароль для проверки
+                  </label>
+                  <input
+                    type="password"
+                    id="verificationPassword"
+                    value={verificationPassword}
+                    onChange={(e) => setVerificationPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <button 
+                  className="check-verification-btn" 
+                  onClick={handleVerificationWithPassword}
+                  disabled={verificationInProgress || !verificationPassword}
+                >
+                  {verificationInProgress ? 'Проверка...' : 'Проверить статус'}
+                </button>
+              </div>
+            ) : (
+              <div className="verification-actions">
+                <button 
+                  className="check-verification-btn" 
+                  onClick={checkVerificationStatus}
+                  disabled={verificationInProgress}
+                >
+                  {verificationInProgress ? 'Проверка...' : 'Проверить статус верификации'}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

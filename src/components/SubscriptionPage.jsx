@@ -12,31 +12,35 @@ export default function SubscriptionPage() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [autoRenew, setAutoRenew] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const API_BASE_URL = 'http://localhost:8080/api';
 
   useEffect(() => {
-    fetchSubscriptionInfo();
-    fetchAvailablePlans();
+    // Проверяем, авторизован ли пользователь
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsAuthenticated(true);
+      fetchSubscriptionInfo();
+      fetchAvailablePlans();
+    } else {
+      setLoading(false);
+      setError('Для доступа к подпискам необходимо авторизоваться');
+    }
   }, []);
 
   const fetchSubscriptionInfo = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      const response = await axios.get(`${API_BASE_URL}/subscription/info`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      console.log('Fetching subscription info...');
+      const response = await axios.get(`${API_BASE_URL}/subscription/info`);
+      console.log('Subscription info response:', response.data);
 
       if (response.data.success) {
         setSubscriptionInfo(response.data.subscription);
         setAutoRenew(response.data.subscription?.autoRenew || false);
       }
     } catch (err) {
+      console.error('Error fetching subscription info:', err);
       setError(err.response?.data?.message || 'Ошибка получения информации о подписке');
     } finally {
       setLoading(false);
@@ -45,12 +49,15 @@ export default function SubscriptionPage() {
 
   const fetchAvailablePlans = async () => {
     try {
+      console.log('Fetching available plans...');
       const response = await axios.get(`${API_BASE_URL}/subscription/plans`);
+      console.log('Available plans response:', response.data);
       
       if (response.data.success) {
         setAvailablePlans(response.data.plans);
       }
     } catch (err) {
+      console.error('Error fetching available plans:', err);
       setError(err.response?.data?.message || 'Ошибка получения доступных планов');
     }
   };
@@ -66,15 +73,16 @@ export default function SubscriptionPage() {
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
+      console.log('Creating subscription with plan:', selectedPlan.planType);
       const response = await axios.post(
         `${API_BASE_URL}/subscription/create`,
         {
           planType: selectedPlan.planType,
           paymentMethod: 'card'
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
+      
+      console.log('Create subscription response:', response.data);
       
       if (response.data.success) {
         // Имитация процесса оплаты
@@ -86,6 +94,7 @@ export default function SubscriptionPage() {
         setProcessingPayment(false);
       }
     } catch (err) {
+      console.error('Error creating subscription:', err);
       setError(err.response?.data?.message || 'Произошла ошибка при создании подписки');
       setProcessingPayment(false);
     }
@@ -93,15 +102,16 @@ export default function SubscriptionPage() {
 
   const handleActivateSubscription = async (subscriptionId, transactionId) => {
     try {
-      const token = localStorage.getItem('token');
+      console.log('Activating subscription:', subscriptionId, transactionId);
       const response = await axios.post(
         `${API_BASE_URL}/subscription/activate`,
         {
           subscriptionId,
           transactionId
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
+      
+      console.log('Activate subscription response:', response.data);
       
       if (response.data.success) {
         setPaymentSuccess(true);
@@ -110,6 +120,7 @@ export default function SubscriptionPage() {
         setError(response.data.message || 'Ошибка активации подписки');
       }
     } catch (err) {
+      console.error('Error activating subscription:', err);
       setError(err.response?.data?.message || 'Произошла ошибка при активации подписки');
     } finally {
       setProcessingPayment(false);
@@ -123,15 +134,16 @@ export default function SubscriptionPage() {
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
+      console.log('Extending subscription with plan:', selectedPlan.planType);
       const response = await axios.post(
         `${API_BASE_URL}/subscription/extend`,
         {
           planType: selectedPlan.planType,
           paymentMethod: 'card'
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
+      
+      console.log('Extend subscription response:', response.data);
       
       if (response.data.success) {
         setPaymentSuccess(true);
@@ -140,6 +152,7 @@ export default function SubscriptionPage() {
         setError(response.data.message || 'Ошибка продления подписки');
       }
     } catch (err) {
+      console.error('Error extending subscription:', err);
       setError(err.response?.data?.message || 'Произошла ошибка при продлении подписки');
     } finally {
       setProcessingPayment(false);
@@ -148,20 +161,22 @@ export default function SubscriptionPage() {
 
   const handleToggleAutoRenew = async () => {
     try {
-      const token = localStorage.getItem('token');
+      console.log('Toggling auto-renew to:', !autoRenew);
       const response = await axios.post(
         `${API_BASE_URL}/subscription/auto-renew`,
         {
           autoRenew: !autoRenew
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
+      
+      console.log('Toggle auto-renew response:', response.data);
       
       if (response.data.success) {
         setAutoRenew(!autoRenew);
         fetchSubscriptionInfo();
       }
     } catch (err) {
+      console.error('Error toggling auto-renew:', err);
       setError(err.response?.data?.message || 'Произошла ошибка при изменении настроек автопродления');
     }
   };
@@ -290,6 +305,28 @@ export default function SubscriptionPage() {
       </button>
     </div>
   );
+
+  const renderLoginPrompt = () => (
+    <div className="login-prompt">
+      <h3>Требуется авторизация</h3>
+      <p>Для доступа к подпискам необходимо авторизоваться</p>
+      <button 
+        className="primary-button"
+        onClick={() => window.location.href = '/'}
+      >
+        На главную
+      </button>
+    </div>
+  );
+
+  if (!isAuthenticated) {
+    return (
+      <div className="subscription-page">
+        <h1>Управление подпиской</h1>
+        {renderLoginPrompt()}
+      </div>
+    );
+  }
 
   if (loading) {
     return (

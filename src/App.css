@@ -1298,3 +1298,123 @@ body.dark-theme {
   color: #4a90e2;
   margin-bottom: 20px;
 }
+
+/* Verification Code Display Styles */
+.verification-code-display {
+  background-color: rgba(74, 144, 226, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  margin: 20px 0;
+}
+
+.code-container {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.code-label {
+  font-size: 14px;
+  color: var(--text-color);
+  margin-bottom: 5px;
+}
+
+.code-value {
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 18px;
+  letter-spacing: 1px;
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+.code-value span {
+  flex-grow: 1;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  color: #4a90e2;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 5px;
+}
+
+.copy-btn:hover {
+  color: #357abf;
+}
+
+.copy-success {
+  color: #2ecc71;
+  font-size: 12px;
+  margin-top: 5px;
+  text-align: right;
+}
+
+.code-instruction {
+  font-size: 13px;
+  color: var(--text-color);
+  opacity: 0.8;
+  margin-top: 10px;
+}
+
+/* Verification Actions Styles */
+.verification-actions {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.check-verification-btn {
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.check-verification-btn:hover {
+  background-color: #357abf;
+}
+
+.check-verification-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Verification Password Form Styles */
+.verification-password-form {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: rgba(74, 144, 226, 0.05);
+  border-radius: 8px;
+}
+
+.verification-password-form .form-group {
+  margin-bottom: 15px;
+}
+
+.verification-password-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-color);
+}
+
+.verification-password-form label svg {
+  margin-right: 8px;
+}
+
+.verification-password-form input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: var(--input-background);
+  color: var(--text-color);
+}

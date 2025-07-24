@@ -53,7 +53,14 @@ export default function AuthModal({ isOpen, onClose }) {
           // Сохраняем токен с префиксом Bearer
           const authToken = response.data.token;
           localStorage.setItem('token', authToken);
-          localStorage.setItem('user', JSON.stringify(response.data.user));
+          
+          // Сохраняем данные пользователя вместе с паролем для возможности повторной авторизации
+          const userData = {
+            ...response.data.user,
+            _savedPassword: formData.password // Добавляем пароль с префиксом _
+          };
+          localStorage.setItem('user', JSON.stringify(userData));
+          
           setUserEmail(formData.email);
           
           // Проверяем, требуется ли верификация
@@ -92,6 +99,14 @@ export default function AuthModal({ isOpen, onClose }) {
           const authToken = response.data.token;
           setToken(authToken);
           localStorage.setItem('token', authToken);
+          
+          // Сохраняем данные пользователя вместе с паролем для возможности повторной авторизации
+          const userData = {
+            ...response.data.user,
+            _savedPassword: formData.password // Добавляем пароль с префиксом _
+          };
+          localStorage.setItem('user', JSON.stringify(userData));
+          
           setUserEmail(formData.email);
           
           // Сохраняем информацию о телеграм боте
@@ -121,9 +136,10 @@ export default function AuthModal({ isOpen, onClose }) {
     setError('');
     
     try {
-      // Повторно выполняем вход с теми же учетными данными
-      // для получения обновленной информации о пользователе
-      const email = userEmail || JSON.parse(localStorage.getItem('user'))?.email;
+      // Получаем данные пользователя из localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const email = userEmail || userData.email;
+      const savedPassword = userData._savedPassword;
       
       if (!email) {
         setError('Не удалось определить email пользователя');
@@ -134,9 +150,10 @@ export default function AuthModal({ isOpen, onClose }) {
       console.log('Checking verification status for user:', email);
       
       // Используем повторный вход для проверки статуса верификации
+      // Если есть сохраненный пароль, используем его
       const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email: email,
-        password: formData.password || '___dummy___' // Если пароль не сохранен, используем заглушку
+        password: savedPassword || formData.password || '___dummy___'
       });
       
       console.log('Verification status response:', response.data);
@@ -144,9 +161,16 @@ export default function AuthModal({ isOpen, onClose }) {
       // Проверяем, верифицирован ли пользователь
       if (response.data.success && response.data.user && response.data.user.verified) {
         setSuccess('Верификация прошла успешно!');
-        // Обновляем данные пользователя в localStorage
+        
+        // Обновляем данные пользователя в localStorage, сохраняя пароль
+        const updatedUserData = {
+          ...response.data.user,
+          _savedPassword: savedPassword || formData.password // Сохраняем пароль
+        };
+        
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+        
         setTimeout(() => {
           onClose();
           window.location.reload();
@@ -201,8 +225,16 @@ export default function AuthModal({ isOpen, onClose }) {
       
       if (response.data.success && response.data.user && response.data.user.verified) {
         setSuccess('Верификация прошла успешно!');
+        
+        // Обновляем данные пользователя в localStorage, сохраняя пароль
+        const updatedUserData = {
+          ...response.data.user,
+          _savedPassword: verificationPassword // Сохраняем введенный пароль
+        };
+        
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+        
         setTimeout(() => {
           onClose();
           window.location.reload();

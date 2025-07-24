@@ -15,6 +15,51 @@ export default function SubscriptionPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const API_BASE_URL = 'http://localhost:8080/api';
+  
+  // Создаем отдельный экземпляр axios для этого компонента
+  const apiClient = axios.create({
+    baseURL: API_BASE_URL
+  });
+  
+  // Настраиваем перехватчик запросов для apiClient
+  useEffect(() => {
+    const requestInterceptor = apiClient.interceptors.request.use(
+      config => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          // Явно добавляем префикс Bearer к токену, если его еще нет
+          config.headers.Authorization = token.startsWith('Bearer ') 
+            ? token 
+            : `Bearer ${token}`;
+          
+          console.log('Subscription API Request:', config.method, config.url);
+        }
+        return config;
+      },
+      error => {
+        return Promise.reject(error);
+      }
+    );
+    
+    const responseInterceptor = apiClient.interceptors.response.use(
+      response => {
+        return response;
+      },
+      error => {
+        if (error.response && error.response.status === 401) {
+          console.error('Authentication error in SubscriptionPage component:', error);
+          setIsAuthenticated(false);
+        }
+        return Promise.reject(error);
+      }
+    );
+    
+    // Очищаем перехватчики при размонтировании компонента
+    return () => {
+      apiClient.interceptors.request.eject(requestInterceptor);
+      apiClient.interceptors.response.eject(responseInterceptor);
+    };
+  }, []);
 
   useEffect(() => {
     // Проверяем, авторизован ли пользователь
@@ -32,12 +77,14 @@ export default function SubscriptionPage() {
   const fetchSubscriptionInfo = async () => {
     try {
       console.log('Fetching subscription info...');
-      const response = await axios.get(`${API_BASE_URL}/subscription/info`);
+      const response = await apiClient.get(`/subscription/info`);
       console.log('Subscription info response:', response.data);
 
       if (response.data.success) {
         setSubscriptionInfo(response.data.subscription);
         setAutoRenew(response.data.subscription?.autoRenew || false);
+      } else {
+        console.error('Error fetching subscription info:', response.data.message);
       }
     } catch (err) {
       console.error('Error fetching subscription info:', err);
@@ -50,130 +97,81 @@ export default function SubscriptionPage() {
   const fetchAvailablePlans = async () => {
     try {
       console.log('Fetching available plans...');
-      const response = await axios.get(`${API_BASE_URL}/subscription/plans`);
+      const response = await apiClient.get(`/subscription/plans`);
       console.log('Available plans response:', response.data);
-      
+
       if (response.data.success) {
         setAvailablePlans(response.data.plans);
       }
     } catch (err) {
       console.error('Error fetching available plans:', err);
-      setError(err.response?.data?.message || 'Ошибка получения доступных планов');
     }
   };
 
-  const handleSelectPlan = (plan) => {
+  const handlePlanSelect = (plan) => {
     setSelectedPlan(plan);
   };
 
-  const handleCreateSubscription = async () => {
-    if (!selectedPlan) return;
-    
-    setProcessingPayment(true);
-    setError('');
-    
-    try {
-      console.log('Creating subscription with plan:', selectedPlan.planType);
-      const response = await axios.post(
-        `${API_BASE_URL}/subscription/create`,
-        {
-          planType: selectedPlan.planType,
-          paymentMethod: 'card'
-        }
-      );
-      
-      console.log('Create subscription response:', response.data);
-      
-      if (response.data.success) {
-        // Имитация процесса оплаты
-        setTimeout(() => {
-          handleActivateSubscription(response.data.subscription.id, response.data.subscription.paymentTransactionId);
-        }, 2000);
-      } else {
-        setError(response.data.message || 'Ошибка создания подписки');
-        setProcessingPayment(false);
-      }
-    } catch (err) {
-      console.error('Error creating subscription:', err);
-      setError(err.response?.data?.message || 'Произошла ошибка при создании подписки');
-      setProcessingPayment(false);
-    }
+  const handleAutoRenewToggle = () => {
+    setAutoRenew(!autoRenew);
   };
 
-  const handleActivateSubscription = async (subscriptionId, transactionId) => {
+  const handlePayment = async () => {
+    if (!selectedPlan) {
+      setError('Пожалуйста, выберите план подписки');
+      return;
+    }
+
+    setProcessingPayment(true);
+    setError('');
+
     try {
-      console.log('Activating subscription:', subscriptionId, transactionId);
-      const response = await axios.post(
-        `${API_BASE_URL}/subscription/activate`,
-        {
-          subscriptionId,
-          transactionId
-        }
-      );
-      
-      console.log('Activate subscription response:', response.data);
-      
+      console.log('Processing payment...');
+      const response = await apiClient.post(`/subscription/create`, {
+        planType: selectedPlan.planType,
+        autoRenew: autoRenew,
+        paymentMethod: 'CARD'
+      });
+      console.log('Payment response:', response.data);
+
       if (response.data.success) {
         setPaymentSuccess(true);
+        // Обновляем информацию о подписке после успешной оплаты
         fetchSubscriptionInfo();
       } else {
-        setError(response.data.message || 'Ошибка активации подписки');
+        setError(response.data.message || 'Ошибка обработки платежа');
       }
     } catch (err) {
-      console.error('Error activating subscription:', err);
-      setError(err.response?.data?.message || 'Произошла ошибка при активации подписки');
+      console.error('Error processing payment:', err);
+      setError(err.response?.data?.message || 'Произошла ошибка при обработке платежа');
     } finally {
       setProcessingPayment(false);
     }
   };
 
-  const handleExtendSubscription = async () => {
-    if (!selectedPlan) return;
-    
-    setProcessingPayment(true);
-    setError('');
-    
+  const handleCancelSubscription = async () => {
     try {
-      console.log('Extending subscription with plan:', selectedPlan.planType);
-      const response = await axios.post(
-        `${API_BASE_URL}/subscription/extend`,
-        {
-          planType: selectedPlan.planType,
-          paymentMethod: 'card'
-        }
-      );
-      
-      console.log('Extend subscription response:', response.data);
-      
+      console.log('Cancelling subscription...');
+      const response = await apiClient.post(`/subscription/cancel`);
+      console.log('Cancel subscription response:', response.data);
+
       if (response.data.success) {
-        setPaymentSuccess(true);
         fetchSubscriptionInfo();
-      } else {
-        setError(response.data.message || 'Ошибка продления подписки');
       }
     } catch (err) {
-      console.error('Error extending subscription:', err);
-      setError(err.response?.data?.message || 'Произошла ошибка при продлении подписки');
-    } finally {
-      setProcessingPayment(false);
+      console.error('Error cancelling subscription:', err);
+      setError(err.response?.data?.message || 'Произошла ошибка при отмене подписки');
     }
   };
 
   const handleToggleAutoRenew = async () => {
     try {
-      console.log('Toggling auto-renew to:', !autoRenew);
-      const response = await axios.post(
-        `${API_BASE_URL}/subscription/auto-renew`,
-        {
-          autoRenew: !autoRenew
-        }
-      );
-      
+      console.log('Toggling auto-renew...');
+      const response = await apiClient.post(`/subscription/toggle-auto-renew`);
       console.log('Toggle auto-renew response:', response.data);
-      
+
       if (response.data.success) {
         setAutoRenew(!autoRenew);
-        fetchSubscriptionInfo();
       }
     } catch (err) {
       console.error('Error toggling auto-renew:', err);
@@ -182,157 +180,176 @@ export default function SubscriptionPage() {
   };
 
   const renderSubscriptionInfo = () => {
-    if (!subscriptionInfo) {
+    if (loading) {
       return (
-        <div className="no-subscription-info">
-          <p>У вас нет активной подписки</p>
+        <div className="loading">
+          <FontAwesomeIcon icon={faSpinner} spin />
+          <p>Загрузка информации о подписке...</p>
         </div>
       );
     }
 
-    const isExpiring = subscriptionInfo.expiringSoon;
-    
+    if (error) {
+      return <div className="error-message">{error}</div>;
+    }
+
+    if (!subscriptionInfo || !subscriptionInfo.isActive) {
+      return (
+        <div className="no-subscription">
+          <p>У вас нет активной подписки</p>
+          <p>Выберите план подписки ниже</p>
+        </div>
+      );
+    }
+
     return (
-      <div className="subscription-info-card">
+      <div className="subscription-details">
         <div className="subscription-header">
           <FontAwesomeIcon icon={faCrown} className="subscription-icon" />
           <h3>{subscriptionInfo.planName}</h3>
-          <span className={`status-badge ${subscriptionInfo.isActive ? 'active' : 'inactive'}`}>
+          <span className={`status ${subscriptionInfo.status.toLowerCase()}`}>
             {subscriptionInfo.status}
           </span>
         </div>
         
-        <div className="subscription-details">
-          <div className="detail-item">
+        <div className="subscription-info-grid">
+          <div className="info-item">
             <span className="label">Дата начала:</span>
             <span className="value">{new Date(subscriptionInfo.startDate).toLocaleDateString()}</span>
           </div>
-          <div className="detail-item">
+          <div className="info-item">
             <span className="label">Дата окончания:</span>
             <span className="value">{new Date(subscriptionInfo.endDate).toLocaleDateString()}</span>
           </div>
-          <div className="detail-item">
+          <div className="info-item">
             <span className="label">Осталось дней:</span>
-            <span className={`value ${isExpiring ? 'expiring' : ''}`}>{subscriptionInfo.daysLeft}</span>
+            <span className="value">{subscriptionInfo.daysLeft}</span>
           </div>
-          <div className="detail-item">
+          <div className="info-item">
             <span className="label">Автопродление:</span>
-            <span className="value">{subscriptionInfo.autoRenew ? 'Включено' : 'Выключено'}</span>
+            <span className="value">
+              {subscriptionInfo.autoRenew ? (
+                <FontAwesomeIcon icon={faCheck} className="icon-success" />
+              ) : (
+                <FontAwesomeIcon icon={faTimes} className="icon-error" />
+              )}
+            </span>
           </div>
         </div>
         
         <div className="subscription-actions">
-          <label className="auto-renew-toggle">
-            <input 
-              type="checkbox" 
-              checked={autoRenew} 
-              onChange={handleToggleAutoRenew} 
-            />
-            <span className="toggle-label">Автопродление</span>
-          </label>
-          
-          {isExpiring && (
-            <button 
-              className="extend-button"
-              onClick={() => setSelectedPlan(null)}
-            >
-              Продлить подписку
-            </button>
-          )}
+          <button 
+            className="secondary-button"
+            onClick={handleToggleAutoRenew}
+          >
+            {subscriptionInfo.autoRenew ? 'Отключить автопродление' : 'Включить автопродление'}
+          </button>
+          <button 
+            className="danger-button"
+            onClick={handleCancelSubscription}
+          >
+            Отменить подписку
+          </button>
         </div>
       </div>
     );
   };
 
   const renderPlans = () => {
-    if (!availablePlans.length) {
-      return <p>Загрузка планов подписки...</p>;
+    if (loading) {
+      return (
+        <div className="loading">
+          <FontAwesomeIcon icon={faSpinner} spin />
+          <p>Загрузка планов подписки...</p>
+        </div>
+      );
+    }
+
+    if (availablePlans.length === 0) {
+      return <p>Нет доступных планов подписки</p>;
     }
 
     return (
-      <div className="subscription-plans">
-        <h3>Выберите план подписки</h3>
-        
-        <div className="plans-grid">
-          {availablePlans.map((plan) => (
-            <div 
-              key={plan.planType}
-              className={`plan-card ${selectedPlan?.planType === plan.planType ? 'selected' : ''}`}
-              onClick={() => handleSelectPlan(plan)}
-            >
-              <h4>{plan.displayName}</h4>
-              <div className="plan-price">{plan.price} ₽</div>
-              <div className="plan-duration">{plan.days} дней</div>
-              
-              {selectedPlan?.planType === plan.planType && (
-                <div className="selected-mark">
-                  <FontAwesomeIcon icon={faCheck} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        
-        {selectedPlan && (
-          <div className="plan-actions">
-            <button 
-              className="purchase-button"
-              onClick={subscriptionInfo?.isActive ? handleExtendSubscription : handleCreateSubscription}
-              disabled={processingPayment}
-            >
-              {processingPayment ? (
-                <>
-                  <FontAwesomeIcon icon={faSpinner} spin /> Обработка...
-                </>
-              ) : subscriptionInfo?.isActive ? 'Продлить подписку' : 'Оформить подписку'}
-            </button>
+      <div className="plans-grid">
+        {availablePlans.map((plan) => (
+          <div 
+            key={plan.planType} 
+            className={`plan-card ${selectedPlan?.planType === plan.planType ? 'selected' : ''}`}
+            onClick={() => handlePlanSelect(plan)}
+          >
+            <h3>{plan.name}</h3>
+            <div className="plan-price">{plan.price} ₽</div>
+            <div className="plan-duration">{plan.days} дней</div>
+            {selectedPlan?.planType === plan.planType && (
+              <div className="selected-badge">
+                <FontAwesomeIcon icon={faCheck} />
+              </div>
+            )}
           </div>
-        )}
+        ))}
       </div>
     );
   };
 
-  const renderPaymentSuccess = () => (
-    <div className="payment-success">
-      <FontAwesomeIcon icon={faCheck} className="success-icon" />
-      <h3>Оплата успешна!</h3>
-      <p>Ваша подписка активирована.</p>
-      <button 
-        className="back-button"
-        onClick={() => setPaymentSuccess(false)}
-      >
-        Вернуться к подписке
-      </button>
-    </div>
-  );
+  const renderPaymentForm = () => {
+    return (
+      <div className="payment-form">
+        <div className="auto-renew-option">
+          <label>
+            <input 
+              type="checkbox"
+              checked={autoRenew}
+              onChange={handleAutoRenewToggle}
+            />
+            Автоматически продлевать подписку
+          </label>
+        </div>
+        
+        <button 
+          className="primary-button payment-button"
+          onClick={handlePayment}
+          disabled={!selectedPlan || processingPayment}
+        >
+          {processingPayment ? (
+            <>
+              <FontAwesomeIcon icon={faSpinner} spin />
+              Обработка платежа...
+            </>
+          ) : (
+            `Оплатить ${selectedPlan ? selectedPlan.price + ' ₽' : ''}`
+          )}
+        </button>
+      </div>
+    );
+  };
 
-  const renderLoginPrompt = () => (
-    <div className="login-prompt">
-      <h3>Требуется авторизация</h3>
-      <p>Для доступа к подпискам необходимо авторизоваться</p>
-      <button 
-        className="primary-button"
-        onClick={() => window.location.href = '/'}
-      >
-        На главную
-      </button>
-    </div>
-  );
+  const renderPaymentSuccess = () => {
+    return (
+      <div className="payment-success">
+        <FontAwesomeIcon icon={faCheck} className="success-icon" />
+        <h2>Оплата прошла успешно!</h2>
+        <p>Ваша подписка активирована.</p>
+        <button 
+          className="primary-button"
+          onClick={() => window.location.href = '/analytics'}
+        >
+          Перейти к аналитике
+        </button>
+      </div>
+    );
+  };
 
   if (!isAuthenticated) {
     return (
       <div className="subscription-page">
         <h1>Управление подпиской</h1>
-        {renderLoginPrompt()}
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="subscription-page loading">
-        <FontAwesomeIcon icon={faSpinner} spin />
-        <p>Загрузка информации о подписке...</p>
+        <div className="error-message">{error || 'Для доступа к подпискам необходимо авторизоваться'}</div>
+        <button 
+          className="primary-button" 
+          onClick={() => window.location.href = '/'}
+        >
+          На главную
+        </button>
       </div>
     );
   }
@@ -354,6 +371,7 @@ export default function SubscriptionPage() {
             <div className="available-plans">
               <h2>{subscriptionInfo?.isActive ? 'Продление подписки' : 'Новая подписка'}</h2>
               {renderPlans()}
+              {selectedPlan && renderPaymentForm()}
             </div>
           </div>
           

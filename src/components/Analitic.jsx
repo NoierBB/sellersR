@@ -1,603 +1,544 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChartLine, faTable, faChartBar, faBoxes, faPercent, faTag, faTruckLoading } from '@fortawesome/free-solid-svg-icons';
+import { faSpinner, faInfoCircle, faExclamationTriangle, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
 
 export default function Analytics() {
-  const [activeTab, setActiveTab] = useState('financial');
-  const [period, setPeriod] = useState(30);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [data, setData] = useState(null);
-  const [apiKeyStatus, setApiKeyStatus] = useState({ hasKey: false, key: '' });
-  const [newApiKey, setNewApiKey] = useState('');
-  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
-  const [showApiKeyForm, setShowApiKeyForm] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [activeTab, setActiveTab] = useState('financial');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeySaving, setApiKeySaving] = useState(false);
+  const [apiKeySuccess, setApiKeySuccess] = useState('');
+  const [apiKeyError, setApiKeyError] = useState('');
+  const [analyticsData, setAnalyticsData] = useState({
+    financial: null,
+    abc: null,
+    supply: null,
+    promotions: null
+  });
 
   const API_BASE_URL = 'http://localhost:8080/api';
 
-  useEffect(() => {
-    // Проверяем, авторизован ли пользователь
-    const token = localStorage.getItem('token');
-    if (token) {
-      setIsAuthenticated(true);
-      checkApiKey();
-      getSubscriptionInfo();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (apiKeyStatus.hasKey && subscriptionInfo?.isActive) {
-      fetchData(activeTab);
-    }
-  }, [activeTab, period, apiKeyStatus.hasKey, subscriptionInfo?.isActive]);
-
-  const checkApiKey = async () => {
+  // Функция для проверки наличия подписки и API ключа
+  const checkRequirements = async () => {
     try {
-      console.log('Checking API key status...');
-      const response = await axios.get(`${API_BASE_URL}/auth/api-key`);
-      console.log('API key status response:', response.data);
-
-      if (response.data.success) {
-        setApiKeyStatus({
-          hasKey: response.data.hasApiKey,
-          key: response.data.apiKey
-        });
-      }
-    } catch (err) {
-      console.error('Error checking API key:', err);
-    }
-  };
-
-  const getSubscriptionInfo = async () => {
-    try {
+      console.log('Checking subscription status...');
+      
+      // Получаем данные пользователя из localStorage для быстрого отображения
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      console.log('User data from localStorage:', userData);
+      
+      // Проверяем наличие подписки
       console.log('Fetching subscription info...');
-      const response = await axios.get(`${API_BASE_URL}/subscription/info`);
-      console.log('Subscription info response:', response.data);
-
-      if (response.data.success) {
-        setSubscriptionInfo(response.data.subscription);
+      const subscriptionResponse = await axios.get(`${API_BASE_URL}/subscription/info`);
+      console.log('Subscription response:', subscriptionResponse.data);
+      
+      if (subscriptionResponse.data.success && subscriptionResponse.data.subscription) {
+        setHasSubscription(true);
+        
+        // Проверяем наличие API ключа
+        console.log('Checking API key...');
+        const apiKeyResponse = await axios.get(`${API_BASE_URL}/auth/api-key`);
+        console.log('API key response:', apiKeyResponse.data);
+        
+        if (apiKeyResponse.data.success && apiKeyResponse.data.hasApiKey) {
+          setHasApiKey(true);
+          // Если есть и подписка, и API ключ, загружаем данные аналитики
+          loadAnalyticsData();
+        }
+      } else {
+        setHasSubscription(false);
       }
     } catch (err) {
-      console.error('Error fetching subscription info:', err);
+      console.error('Error checking requirements:', err);
+      
+      // Если ошибка связана с авторизацией, пробуем использовать данные из localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      console.log('Using user data from localStorage after error:', userData);
+      
+      // Пробуем повторно авторизоваться
+      try {
+        console.log('Attempting to re-authenticate...');
+        const email = userData.email;
+        const token = localStorage.getItem('token');
+        
+        if (email && token) {
+          console.log('Token and email found in localStorage');
+          // Делаем запрос к API для проверки подписки с явным указанием заголовка
+          const subscriptionResponse = await axios.get(`${API_BASE_URL}/subscription/info`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          console.log('Re-auth subscription response:', subscriptionResponse.data);
+          
+          if (subscriptionResponse.data.success && subscriptionResponse.data.subscription) {
+            setHasSubscription(true);
+            
+            // Проверяем наличие API ключа
+            const apiKeyResponse = await axios.get(`${API_BASE_URL}/auth/api-key`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            console.log('Re-auth API key response:', apiKeyResponse.data);
+            
+            if (apiKeyResponse.data.success && apiKeyResponse.data.hasApiKey) {
+              setHasApiKey(true);
+              // Если есть и подписка, и API ключ, загружаем данные аналитики
+              loadAnalyticsData();
+            }
+          }
+        }
+      } catch (reAuthErr) {
+        console.error('Re-authentication error:', reAuthErr);
+        setError('Не удалось проверить наличие подписки и API ключа');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchData = async (tab) => {
-    if (!apiKeyStatus.hasKey || !subscriptionInfo?.isActive) return;
-
+  // Загрузка данных аналитики
+  const loadAnalyticsData = async () => {
     setLoading(true);
-    setError('');
     
     try {
-      console.log(`Fetching ${tab} data for period ${period} days...`);
+      console.log('Loading analytics data for tab:', activeTab);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Для доступа к аналитике необходимо авторизоваться');
+        setLoading(false);
+        return;
+      }
+      
       let endpoint = '';
       
-      switch (tab) {
+      switch (activeTab) {
         case 'financial':
-          endpoint = `/excel-analytics/financial-table?days=${period}`;
+          endpoint = `${API_BASE_URL}/analytics/financial`;
           break;
         case 'abc':
-          endpoint = `/excel-analytics/abc-analysis-enhanced?days=${period}`;
+          endpoint = `${API_BASE_URL}/analytics/abc`;
           break;
         case 'supply':
-          endpoint = `/excel-analytics/supply-planning?days=${period}`;
+          endpoint = `${API_BASE_URL}/analytics/supply`;
           break;
         case 'promotions':
-          endpoint = `/excel-analytics/promotions-tracking?days=${period}`;
+          endpoint = `${API_BASE_URL}/analytics/promotions`;
           break;
         default:
-          endpoint = `/excel-analytics/financial-table?days=${period}`;
+          endpoint = `${API_BASE_URL}/analytics/financial`;
       }
       
-      const response = await axios.get(`${API_BASE_URL}${endpoint}`);
-      console.log(`${tab} data response:`, response.data);
+      console.log('Fetching data from endpoint:', endpoint);
+      
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Analytics data response:', response.data);
       
       if (response.data.success) {
-        setData(response.data);
+        setAnalyticsData({
+          ...analyticsData,
+          [activeTab]: response.data.data
+        });
+        setError('');
       } else {
-        setError(response.data.message || 'Ошибка получения данных');
+        setError(response.data.message || 'Ошибка получения данных аналитики');
       }
     } catch (err) {
-      console.error(`Error fetching ${tab} data:`, err);
-      setError(err.response?.data?.message || 'Произошла ошибка при загрузке данных');
+      console.error('Error loading analytics data:', err);
+      setError(err.response?.data?.message || 'Ошибка получения данных аналитики');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApiKeySubmit = async (e) => {
+  // Обработчик сохранения API ключа
+  const handleSaveApiKey = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    setApiKeySaving(true);
+    setApiKeyError('');
+    setApiKeySuccess('');
     
     try {
-      console.log('Setting API key...');
+      console.log('Saving API key...');
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiKeyError('Для установки API ключа необходимо авторизоваться');
+        setApiKeySaving(false);
+        return;
+      }
+      
       const response = await axios.post(
         `${API_BASE_URL}/auth/set-api-key`,
-        { apiKey: newApiKey }
+        { apiKey: apiKeyInput },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
       );
-      console.log('Set API key response:', response.data);
+      
+      console.log('Save API key response:', response.data);
       
       if (response.data.success) {
-        setApiKeyStatus({
-          hasKey: true,
-          key: newApiKey
-        });
-        setShowApiKeyForm(false);
-        setNewApiKey('');
-        fetchData(activeTab);
+        setApiKeySuccess('API ключ успешно сохранен');
+        setHasApiKey(true);
+        setApiKeyInput('');
+        
+        // После сохранения API ключа загружаем данные аналитики
+        loadAnalyticsData();
       } else {
-        setError(response.data.message || 'Ошибка установки API ключа');
+        setApiKeyError(response.data.message || 'Ошибка сохранения API ключа');
       }
     } catch (err) {
-      console.error('Error setting API key:', err);
-      setError(err.response?.data?.message || 'Произошла ошибка при установке API ключа');
+      console.error('Error saving API key:', err);
+      setApiKeyError(err.response?.data?.message || 'Ошибка сохранения API ключа');
     } finally {
-      setLoading(false);
+      setApiKeySaving(false);
     }
   };
 
-  const handleRemoveApiKey = async () => {
-    try {
-      console.log('Removing API key...');
-      const response = await axios.delete(`${API_BASE_URL}/auth/api-key`);
-      console.log('Remove API key response:', response.data);
-      
-      if (response.data.success) {
-        setApiKeyStatus({
-          hasKey: false,
-          key: ''
-        });
-        setData(null);
-      }
-    } catch (err) {
-      console.error('Error removing API key:', err);
-      setError(err.response?.data?.message || 'Произошла ошибка при удалении API ключа');
+  // Обработчик смены вкладки
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    
+    // Если данных для выбранной вкладки еще нет, загружаем их
+    if (hasSubscription && hasApiKey && !analyticsData[tab]) {
+      loadAnalyticsData();
     }
   };
 
-  const renderLoginPrompt = () => (
-    <div className="login-prompt">
-      <h3>Требуется авторизация</h3>
-      <p>Для доступа к аналитике необходимо авторизоваться</p>
-      <button 
-        className="primary-button" 
-        onClick={() => window.location.href = '/'}
-      >
-        На главную
-      </button>
-    </div>
-  );
+  // Проверяем наличие подписки и API ключа при загрузке компонента
+  useEffect(() => {
+    checkRequirements();
+  }, []);
 
-  const renderNoSubscriptionMessage = () => (
-    <div className="no-subscription">
-      <h3>Требуется подписка</h3>
-      <p>Для доступа к аналитике необходима активная подписка.</p>
-      <button 
-        className="primary-button" 
-        onClick={() => window.location.href = '/subscription'}
-      >
-        Оформить подписку
-      </button>
-    </div>
-  );
+  // Загружаем данные при изменении активной вкладки
+  useEffect(() => {
+    if (hasSubscription && hasApiKey) {
+      loadAnalyticsData();
+    }
+  }, [activeTab]);
 
-  const renderApiKeyForm = () => (
-    <div className="api-key-form">
-      <h3>Добавьте API ключ Wildberries</h3>
-      <p>Для получения аналитики необходимо добавить API ключ от вашего кабинета Wildberries</p>
-      
-      {showApiKeyForm ? (
-        <form onSubmit={handleApiKeySubmit}>
-          <div className="form-group">
-            <label htmlFor="apiKey">API ключ Wildberries</label>
-            <input
-              type="text"
-              id="apiKey"
-              value={newApiKey}
-              onChange={(e) => setNewApiKey(e.target.value)}
-              placeholder="Введите ваш API ключ"
-              required
-            />
-          </div>
+  // Если идет загрузка, показываем индикатор загрузки
+  if (loading && !hasSubscription && !hasApiKey) {
+    return (
+      <div className="analytics-page loading">
+        <FontAwesomeIcon icon={faSpinner} spin />
+        <p>Загрузка аналитики...</p>
+      </div>
+    );
+  }
+
+  // Если нет подписки, показываем сообщение о необходимости подписки
+  if (!hasSubscription) {
+    return (
+      <div className="analytics-page">
+        <h1>Аналитика</h1>
+        <div className="subscription-required">
+          <FontAwesomeIcon icon={faExclamationTriangle} className="warning-icon" />
+          <h2>Требуется подписка</h2>
+          <p>Для доступа к аналитике необходима активная подписка.</p>
           <button 
-            type="submit" 
             className="primary-button"
-            disabled={loading}
+            onClick={() => window.location.href = '/subscription'}
           >
-            {loading ? 'Сохранение...' : 'Сохранить'}
+            Оформить подписку
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Если нет API ключа, показываем форму для ввода API ключа
+  if (!hasApiKey) {
+    return (
+      <div className="analytics-page">
+        <h1>Аналитика</h1>
+        <div className="api-key-required">
+          <FontAwesomeIcon icon={faInfoCircle} className="info-icon" />
+          <h2>Требуется API ключ Wildberries</h2>
+          <p>Для доступа к аналитике необходимо указать API ключ вашего кабинета Wildberries.</p>
+          
+          <form onSubmit={handleSaveApiKey} className="api-key-form">
+            {apiKeyError && <div className="error-message">{apiKeyError}</div>}
+            {apiKeySuccess && <div className="success-message">{apiKeySuccess}</div>}
+            
+            <div className="form-group">
+              <label htmlFor="apiKey">API ключ Wildberries</label>
+              <input
+                type="text"
+                id="apiKey"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="Введите ваш API ключ Wildberries"
+                required
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              className="primary-button"
+              disabled={apiKeySaving}
+            >
+              {apiKeySaving ? 'Сохранение...' : 'Сохранить API ключ'}
+            </button>
+          </form>
+          
+          <div className="api-key-help">
+            <p>Для получения API ключа перейдите в <a href="https://seller.wildberries.ru/supplier-settings/access-to-api" target="_blank" rel="noopener noreferrer">кабинет продавца Wildberries</a> и создайте новый ключ.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Если есть ошибка, показываем сообщение об ошибке
+  if (error) {
+    return (
+      <div className="analytics-page">
+        <h1>Аналитика</h1>
+        <div className="error-container">
+          <FontAwesomeIcon icon={faExclamationTriangle} className="error-icon" />
+          <h2>Ошибка загрузки данных</h2>
+          <p>{error}</p>
           <button 
-            type="button" 
-            className="secondary-button"
-            onClick={() => setShowApiKeyForm(false)}
+            className="primary-button"
+            onClick={loadAnalyticsData}
           >
-            Отмена
+            Повторить попытку
           </button>
-        </form>
-      ) : (
-        <button 
-          className="primary-button" 
-          onClick={() => setShowApiKeyForm(true)}
-        >
-          Добавить API ключ
-        </button>
-      )}
-    </div>
-  );
-
-  const renderFinancialTable = () => {
-    if (!data || !data.data) return <p>Нет данных для отображения</p>;
-    
-    return (
-      <div className="financial-table">
-        <div className="summary-box">
-          <h3>Сводка</h3>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="label">Всего заказов:</span>
-              <span className="value">{data.summary.totalOrders}</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Всего продаж:</span>
-              <span className="value">{data.summary.totalSales}</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Общая выручка:</span>
-              <span className="value">{data.summary.totalPayment?.toLocaleString()} ₽</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Логистика:</span>
-              <span className="value">{data.summary.totalLogistics?.toLocaleString()} ₽</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Чистая прибыль:</span>
-              <span className="value">{data.summary.totalNetProfit?.toLocaleString()} ₽</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Средняя маржа:</span>
-              <span className="value">{data.summary.averageMargin?.toFixed(2)}%</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="data-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Артикул WB</th>
-                <th>Артикул поставщика</th>
-                <th>Заказы</th>
-                <th>Продажи</th>
-                <th>Выручка</th>
-                <th>Логистика</th>
-                <th>Чистая прибыль</th>
-                <th>Маржа</th>
-                <th>ROI</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.data.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.wbArticle}</td>
-                  <td>{item.supplierArticle}</td>
-                  <td>{item.orders}</td>
-                  <td>{item.sales}</td>
-                  <td>{item.payment?.toLocaleString()} ₽</td>
-                  <td>{item.logistics?.toLocaleString()} ₽</td>
-                  <td>{item.netProfit?.toLocaleString()} ₽</td>
-                  <td>{item.profitMargin?.toFixed(2)}%</td>
-                  <td>{item.roi?.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     );
-  };
-
-  const renderAbcAnalysis = () => {
-    if (!data || !data.data) return <p>Нет данных для отображения</p>;
-    
-    return (
-      <div className="abc-analysis">
-        <div className="summary-box">
-          <h3>Сводка ABC-анализа</h3>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="label">Общая выручка:</span>
-              <span className="value">{data.summary.totalRevenue?.toLocaleString()} ₽</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Категория A:</span>
-              <span className="value">{data.summary.categoryA.productsCount} товаров ({data.summary.categoryA.percent?.toFixed(2)}%)</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Категория B:</span>
-              <span className="value">{data.summary.categoryB.productsCount} товаров ({data.summary.categoryB.percent?.toFixed(2)}%)</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Категория C:</span>
-              <span className="value">{data.summary.categoryC.productsCount} товаров ({data.summary.categoryC.percent?.toFixed(2)}%)</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="data-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Кластер</th>
-                <th>Выручка</th>
-                <th>Доля выручки</th>
-                <th>Накопленный %</th>
-                <th>Категория ABC</th>
-                <th>Коэф. отклонения</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.data.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.cluster}</td>
-                  <td>{item.revenue?.toLocaleString()} ₽</td>
-                  <td>{item.revenuePercent?.toFixed(2)}%</td>
-                  <td>{item.cumulativePercent?.toFixed(2)}%</td>
-                  <td>{item.abcCategory}</td>
-                  <td>{item.deviationCoeff?.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderSupplyPlanning = () => {
-    if (!data || !data.data) return <p>Нет данных для отображения</p>;
-    
-    return (
-      <div className="supply-planning">
-        <div className="summary-box">
-          <h3>План поставок</h3>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="label">Всего товаров:</span>
-              <span className="value">{data.summary.totalProducts}</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Критический запас:</span>
-              <span className="value">{data.summary.criticalStock}</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Низкий запас:</span>
-              <span className="value">{data.summary.lowStock}</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Нормальный запас:</span>
-              <span className="value">{data.summary.normalStock}</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Всего к заказу:</span>
-              <span className="value">{data.summary.totalOrderNeed}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="data-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Артикул WB</th>
-                <th>Артикул поставщика</th>
-                <th>Название</th>
-                <th>Текущий запас</th>
-                <th>Заказов в день</th>
-                <th>Осталось дней</th>
-                <th>План дней</th>
-                <th>Нужно заказать</th>
-                <th>Коэф. сезонности</th>
-                <th>Статус</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.data.map((item, index) => (
-                <tr key={index} className={`status-${item.status.toLowerCase()}`}>
-                  <td>{item.wbArticle}</td>
-                  <td>{item.supplierArticle}</td>
-                  <td>{item.productName}</td>
-                  <td>{item.currentStock}</td>
-                  <td>{item.ordersPerDay?.toFixed(2)}</td>
-                  <td>{item.daysLeft}</td>
-                  <td>{item.planDays}</td>
-                  <td>{item.orderNeed}</td>
-                  <td>{item.seasonalityCoeff?.toFixed(2)}</td>
-                  <td>{item.status === 'CRITICAL' ? 'Критический' : 
-                       item.status === 'LOW' ? 'Низкий' : 'Нормальный'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderPromotionsTracking = () => {
-    if (!data || !data.data) return <p>Нет данных для отображения</p>;
-    
-    return (
-      <div className="promotions-tracking">
-        <div className="summary-box">
-          <h3>Учет акций</h3>
-          <div className="summary-grid">
-            <div className="summary-item">
-              <span className="label">Всего акций:</span>
-              <span className="value">{data.summary.totalPromotions}</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Средняя скидка:</span>
-              <span className="value">{data.summary.averageDiscount?.toFixed(2)}%</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Общая прибыль:</span>
-              <span className="value">{data.summary.totalProfit?.toLocaleString()} ₽</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Прибыль с акций:</span>
-              <span className="value">{data.summary.totalPromotionProfit?.toLocaleString()} ₽</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="data-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Артикул WB</th>
-                <th>Артикул поставщика</th>
-                <th>Группа</th>
-                <th>ABC</th>
-                <th>Текущая цена</th>
-                <th>Валовая прибыль</th>
-                <th>Акция</th>
-                <th>Цена по акции</th>
-                <th>Прибыль по акции</th>
-                <th>Оборачиваемость</th>
-                <th>Остаток WB</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.data.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.wbArticle}</td>
-                  <td>{item.supplierArticle}</td>
-                  <td>{item.grouping}</td>
-                  <td>{item.abcAnalysis}</td>
-                  <td>{item.currentPrice?.toLocaleString()} ₽</td>
-                  <td>{item.grossProfit?.toLocaleString()} ₽</td>
-                  <td>{item.action}</td>
-                  <td>{item.promotionPrice?.toLocaleString()} ₽</td>
-                  <td>{item.promotionProfit?.toLocaleString()} ₽</td>
-                  <td>{item.turnoverDays}</td>
-                  <td>{item.wbStock}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderContent = () => {
-    if (!isAuthenticated) {
-      return renderLoginPrompt();
-    }
-    
-    if (!subscriptionInfo?.isActive) {
-      return renderNoSubscriptionMessage();
-    }
-    
-    if (!apiKeyStatus.hasKey) {
-      return renderApiKeyForm();
-    }
-    
-    if (loading) {
-      return <div className="loading">Загрузка данных...</div>;
-    }
-    
-    if (error) {
-      return <div className="error-message">{error}</div>;
-    }
-    
-    switch (activeTab) {
-      case 'financial':
-        return renderFinancialTable();
-      case 'abc':
-        return renderAbcAnalysis();
-      case 'supply':
-        return renderSupplyPlanning();
-      case 'promotions':
-        return renderPromotionsTracking();
-      default:
-        return <p>Выберите тип отчета</p>;
-    }
-  };
+  }
 
   return (
-    <div className="analytics-container">
-      <div className="analytics-header">
-        <h1>Аналитика Wildberries</h1>
-        
-        {apiKeyStatus.hasKey && (
-          <div className="api-key-status">
-            <span>API ключ: {apiKeyStatus.key.substring(0, 10)}...</span>
-            <button 
-              className="remove-api-btn" 
-              onClick={handleRemoveApiKey}
-            >
-              Удалить ключ
-            </button>
-          </div>
-        )}
-        
-        {subscriptionInfo?.isActive && (
-          <div className="subscription-info">
-            <span>Подписка: {subscriptionInfo.planName}</span>
-            <span>Статус: {subscriptionInfo.status}</span>
-            <span>Осталось дней: {subscriptionInfo.daysLeft}</span>
-          </div>
-        )}
+    <div className="analytics-page">
+      <h1>Аналитика</h1>
+      
+      <div className="analytics-tabs">
+        <button 
+          className={`tab-button ${activeTab === 'financial' ? 'active' : ''}`}
+          onClick={() => handleTabChange('financial')}
+        >
+          Финансовая таблица
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'abc' ? 'active' : ''}`}
+          onClick={() => handleTabChange('abc')}
+        >
+          ABC-анализ
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'supply' ? 'active' : ''}`}
+          onClick={() => handleTabChange('supply')}
+        >
+          Планирование поставок
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'promotions' ? 'active' : ''}`}
+          onClick={() => handleTabChange('promotions')}
+        >
+          Отслеживание промоакций
+        </button>
       </div>
       
-      {apiKeyStatus.hasKey && subscriptionInfo?.isActive && (
-        <>
-          <div className="analytics-tabs">
-            <button 
-              className={activeTab === 'financial' ? 'active' : ''} 
-              onClick={() => setActiveTab('financial')}
-            >
-              <FontAwesomeIcon icon={faTable} /> Финансовая таблица
-            </button>
-            <button 
-              className={activeTab === 'abc' ? 'active' : ''} 
-              onClick={() => setActiveTab('abc')}
-            >
-              <FontAwesomeIcon icon={faChartBar} /> ABC-анализ
-            </button>
-            <button 
-              className={activeTab === 'supply' ? 'active' : ''} 
-              onClick={() => setActiveTab('supply')}
-            >
-              <FontAwesomeIcon icon={faTruckLoading} /> План поставок
-            </button>
-            <button 
-              className={activeTab === 'promotions' ? 'active' : ''} 
-              onClick={() => setActiveTab('promotions')}
-            >
-              <FontAwesomeIcon icon={faTag} /> Учет акций
-            </button>
-          </div>
-          
-          <div className="period-selector">
-            <label>Период анализа:</label>
-            <select value={period} onChange={(e) => setPeriod(Number(e.target.value))}>
-              <option value={7}>7 дней</option>
-              <option value={14}>14 дней</option>
-              <option value={30}>30 дней</option>
-              <option value={60}>60 дней</option>
-              <option value={90}>90 дней</option>
-            </select>
-          </div>
-        </>
-      )}
-      
       <div className="analytics-content">
-        {renderContent()}
+        {loading ? (
+          <div className="loading-container">
+            <FontAwesomeIcon icon={faSpinner} spin />
+            <p>Загрузка данных...</p>
+          </div>
+        ) : (
+          <div className="data-container">
+            {/* Содержимое для вкладки "Финансовая таблица" */}
+            {activeTab === 'financial' && analyticsData.financial && (
+              <div className="financial-table">
+                <h2>Финансовая таблица</h2>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Товар</th>
+                      <th>Продажи</th>
+                      <th>Выручка</th>
+                      <th>Прибыль</th>
+                      <th>ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analyticsData.financial.items.map((item, index) => (
+                      <tr key={index}>
+                        <td>{item.product}</td>
+                        <td>{item.sales}</td>
+                        <td>{item.revenue} ₽</td>
+                        <td>{item.profit} ₽</td>
+                        <td>{item.roi}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td>Итого</td>
+                      <td>{analyticsData.financial.total.sales}</td>
+                      <td>{analyticsData.financial.total.revenue} ₽</td>
+                      <td>{analyticsData.financial.total.profit} ₽</td>
+                      <td>{analyticsData.financial.total.roi}%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+            
+            {/* Содержимое для вкладки "ABC-анализ" */}
+            {activeTab === 'abc' && analyticsData.abc && (
+              <div className="abc-analysis">
+                <h2>ABC-анализ</h2>
+                <div className="abc-groups">
+                  <div className="abc-group">
+                    <h3>Группа A</h3>
+                    <p>Товары, приносящие 80% выручки</p>
+                    <ul>
+                      {analyticsData.abc.groupA.map((item, index) => (
+                        <li key={index}>
+                          <span className="product-name">{item.product}</span>
+                          <span className="product-revenue">{item.revenue} ₽</span>
+                          <span className="product-percent">{item.percent}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <div className="abc-group">
+                    <h3>Группа B</h3>
+                    <p>Товары, приносящие 15% выручки</p>
+                    <ul>
+                      {analyticsData.abc.groupB.map((item, index) => (
+                        <li key={index}>
+                          <span className="product-name">{item.product}</span>
+                          <span className="product-revenue">{item.revenue} ₽</span>
+                          <span className="product-percent">{item.percent}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <div className="abc-group">
+                    <h3>Группа C</h3>
+                    <p>Товары, приносящие 5% выручки</p>
+                    <ul>
+                      {analyticsData.abc.groupC.map((item, index) => (
+                        <li key={index}>
+                          <span className="product-name">{item.product}</span>
+                          <span className="product-revenue">{item.revenue} ₽</span>
+                          <span className="product-percent">{item.percent}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Содержимое для вкладки "Планирование поставок" */}
+            {activeTab === 'supply' && analyticsData.supply && (
+              <div className="supply-planning">
+                <h2>Планирование поставок</h2>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Товар</th>
+                      <th>Текущий остаток</th>
+                      <th>Средние продажи в день</th>
+                      <th>Прогноз на исчерпание</th>
+                      <th>Рекомендуемая поставка</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analyticsData.supply.items.map((item, index) => (
+                      <tr key={index} className={item.daysLeft < 7 ? 'warning' : ''}>
+                        <td>{item.product}</td>
+                        <td>{item.currentStock}</td>
+                        <td>{item.averageSalesPerDay}</td>
+                        <td>{item.daysLeft} дней</td>
+                        <td>{item.recommendedSupply}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            
+            {/* Содержимое для вкладки "Отслеживание промоакций" */}
+            {activeTab === 'promotions' && analyticsData.promotions && (
+              <div className="promotions-tracking">
+                <h2>Отслеживание промоакций</h2>
+                <div className="promotions-list">
+                  {analyticsData.promotions.map((promo, index) => (
+                    <div key={index} className="promotion-card">
+                      <div className="promotion-header">
+                        <h3>{promo.name}</h3>
+                        <span className={`promotion-status ${promo.active ? 'active' : 'inactive'}`}>
+                          {promo.active ? 'Активна' : 'Завершена'}
+                        </span>
+                      </div>
+                      
+                      <div className="promotion-dates">
+                        <span>Начало: {new Date(promo.startDate).toLocaleDateString()}</span>
+                        <span>Окончание: {new Date(promo.endDate).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="promotion-stats">
+                        <div className="stat">
+                          <span className="stat-label">Продажи до</span>
+                          <span className="stat-value">{promo.salesBefore}</span>
+                        </div>
+                        <div className="stat">
+                          <span className="stat-label">Продажи во время</span>
+                          <span className="stat-value">{promo.salesDuring}</span>
+                        </div>
+                        <div className="stat">
+                          <span className="stat-label">Прирост</span>
+                          <span className="stat-value">{promo.salesGrowth}%</span>
+                        </div>
+                      </div>
+                      
+                      <div className="promotion-products">
+                        <h4>Товары в акции:</h4>
+                        <ul>
+                          {promo.products.map((product, idx) => (
+                            <li key={idx}>{product}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Если данных для выбранной вкладки нет */}
+            {!analyticsData[activeTab] && (
+              <div className="no-data">
+                <FontAwesomeIcon icon={faInfoCircle} className="info-icon" />
+                <p>Данные отсутствуют или загружаются</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

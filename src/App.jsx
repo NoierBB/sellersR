@@ -50,10 +50,49 @@ axios.interceptors.response.use(
         
         // Проверяем, не связан ли запрос с авторизацией
         if (!error.config.url.includes('/auth/login') && !error.config.url.includes('/auth/register')) {
-          console.log('Token might be invalid, clearing local storage');
-          // localStorage.removeItem('token');
-          // localStorage.removeItem('user');
-          // window.location.href = '/';
+          console.log('Token might be invalid, attempting to refresh session');
+          
+          // Получаем данные пользователя из localStorage
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          
+          // Если есть email и сохраненный пароль, можно попробовать повторно авторизоваться
+          if (userData.email && userData._savedPassword) {
+            console.log('Attempting to re-login with saved credentials');
+            
+            // Создаем новый экземпляр axios без перехватчиков для предотвращения цикла
+            const axiosInstance = axios.create({
+              baseURL: 'http://localhost:8080'
+            });
+            
+            // Пытаемся повторно войти в систему
+            return axiosInstance.post('/api/auth/login', {
+              email: userData.email,
+              password: userData._savedPassword
+            })
+            .then(response => {
+              if (response.data.success) {
+                console.log('Re-login successful, updating token');
+                
+                // Обновляем токен и данные пользователя
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('user', JSON.stringify({
+                  ...response.data.user,
+                  _savedPassword: userData._savedPassword // Сохраняем пароль для будущих повторных авторизаций
+                }));
+                
+                // Повторяем оригинальный запрос с новым токеном
+                error.config.headers.Authorization = `Bearer ${response.data.token}`;
+                return axios(error.config);
+              } else {
+                // Если повторная авторизация не удалась, отклоняем промис
+                return Promise.reject(error);
+              }
+            })
+            .catch(reLoginError => {
+              console.error('Re-login failed:', reLoginError);
+              return Promise.reject(error);
+            });
+          }
         }
       }
     }
@@ -95,18 +134,23 @@ export default function App() {
       console.log('Token found in localStorage');
       
       // Проверяем токен, делая запрос к API
-      axios.get('/api/subscription/check-access')
+      axios.get('/api/subscription/info')
         .then(response => {
           console.log('Token is valid:', response.data);
         })
         .catch(error => {
           console.error('Token validation error:', error);
           
-          // Если токен недействителен, очищаем localStorage
+          // Если токен недействителен и нет сохраненных учетных данных для повторного входа,
+          // можно очистить localStorage и перенаправить на главную страницу
           if (error.response && error.response.status === 401) {
-            console.log('Token is invalid, clearing localStorage');
-            // localStorage.removeItem('token');
-            // localStorage.removeItem('user');
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            if (!userData._savedPassword) {
+              console.log('Token is invalid and no saved credentials, clearing localStorage');
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              // window.location.href = '/';
+            }
           }
         });
     }

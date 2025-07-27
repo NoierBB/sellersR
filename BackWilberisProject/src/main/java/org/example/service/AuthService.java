@@ -62,7 +62,7 @@ public class AuthService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getIsVerified(),
-                user.getWbApiKey() != null
+                user.getWildberriesApiKey() != null
         );
     }
     
@@ -109,7 +109,7 @@ public class AuthService {
                     user.getFirstName(),
                     user.getLastName(),
                     user.getIsVerified(),
-                    user.getWbApiKey() != null
+                    user.getWildberriesApiKey() != null
             );
             
         } catch (Exception e) {
@@ -148,31 +148,69 @@ public class AuthService {
         return user.getVerificationCode();
     }
     
-    // ВРЕМЕННЫЙ метод для отладки - сброс пароля
-    public boolean resetPassword(String email, String newPassword) {
-        try {
-            User user = userRepository.findByEmail(email).orElse(null);
-            if (user == null) {
-                System.out.println("❌ Пользователь не найден для сброса пароля: " + email);
-                return false;
-            }
-            
-            String hashedPassword = passwordEncoder.encode(newPassword);
-            user.setPassword(hashedPassword);
-            user.setUpdatedAt(LocalDateTime.now());
-            
-            userRepository.save(user);
-            
-            System.out.println("✅ Пароль успешно обновлен для пользователя: " + email);
-            return true;
-        } catch (Exception e) {
-            System.err.println("❌ Ошибка сброса пароля: " + e.getMessage());
-            return false;
-        }
+    /**
+     * Извлекает email из JWT токена
+     * Используется для ручной проверки токена в контроллерах
+     */
+    public String extractEmailFromToken(String token) {
+        return jwtService.extractUsername(token);
     }
     
+    /**
+     * Генерирует новый JWT токен для пользователя
+     * @param user Пользователь, для которого нужно сгенерировать токен
+     * @return Новый JWT токен
+     */
+    public String generateNewToken(User user) {
+        System.out.println("🔑 Генерация нового токена для пользователя: " + user.getEmail());
+        return jwtService.generateToken(user);
+    }
+    
+    /**
+     * Изменяет пароль пользователя
+     * @param email Email пользователя
+     * @param currentPassword Текущий пароль
+     * @param newPassword Новый пароль
+     * @return true, если пароль успешно изменен, false - если текущий пароль неверный
+     */
+    public boolean changePassword(String email, String currentPassword, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+        
+        // Проверяем текущий пароль
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            return false;
+        }
+        
+        // Устанавливаем новый пароль
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        
+        return true;
+    }
+    
+    /**
+     * Сбрасывает пароль пользователя
+     */
+    public boolean resetPassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElse(null);
+        
+        if (user == null) {
+            return false;
+        }
+        
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        
+        System.out.println("Password reset for user: " + email);
+        return true;
+    }
+    
+    // Генерация 6-значного кода верификации
     private String generateVerificationCode() {
         Random random = new Random();
-        return String.format("%06d", random.nextInt(999999));
+        int code = 100000 + random.nextInt(900000); // 6-значный код
+        return String.valueOf(code);
     }
 } 

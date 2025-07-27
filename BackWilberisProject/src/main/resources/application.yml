@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/wilberis_analytics
     username: postgres
-    password: root
+    password: postgres
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -16,6 +16,14 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    generate-ddl: true
+
+  sql:
+    init:
+      mode: always
+      platform: postgresql
+      schema-locations: classpath:database_setup.sql
 
   security:
     cors:
@@ -30,7 +38,7 @@ jwt:
 
 telegram:
   bot:
-    token: ${TELEGRAM_BOT_TOKEN:default_token_for_dev}
+    token: "7129276727:AAHW4CscuEQsFbiirVdwr38p-rRqJr9n2PQ"
     username: "SellersWilberis_bot"
 
 wildberries:

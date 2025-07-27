@@ -1,6 +1,7 @@
 package org.example.service;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -23,8 +24,24 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private Long jwtExpiration;
     
+    // Допустимое отклонение времени для токенов (5 минут)
+    private static final long CLOCK_SKEW = 300000; // 5 минут в миллисекундах
+    
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+    
+    /**
+     * Метод для извлечения email из токена
+     * Используется в контроллерах для ручной проверки токена
+     */
+    public String extractEmailFromToken(String token) {
+        try {
+            return extractUsername(token);
+        } catch (Exception e) {
+            System.err.println("❌ Error extracting email from token: " + e.getMessage());
+            return null;
+        }
     }
     
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -54,6 +71,46 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
+    
+    /**
+     * Проверяет валидность токена без выбрасывания исключения
+     * @param token JWT токен
+     * @return true если токен валиден, false если истек или невалиден
+     */
+    public boolean validateTokenSafely(String token) {
+        try {
+            // Проверяем, что токен можно распарсить и он не истек
+            Jwts.parserBuilder()
+                .setSigningKey(getSignInKey())
+                .setAllowedClockSkewSeconds(CLOCK_SKEW / 1000) // Устанавливаем допустимое отклонение времени
+                .build()
+                .parseClaimsJws(token);
+            return true;
+        } catch (ExpiredJwtException e) {
+            System.out.println("⏰ Token has expired: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            System.err.println("❌ Invalid token: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Извлекает email из токена даже если он истек
+     * @param token JWT токен
+     * @return email пользователя или null если токен невалиден
+     */
+    public String extractEmailFromExpiredToken(String token) {
+        try {
+            return extractUsername(token);
+        } catch (ExpiredJwtException e) {
+            // Извлекаем email из истекшего токена
+            return e.getClaims().getSubject();
+        } catch (Exception e) {
+            System.err.println("❌ Error extracting email from token: " + e.getMessage());
+            return null;
+        }
     }
     
     private boolean isTokenExpired(String token) {

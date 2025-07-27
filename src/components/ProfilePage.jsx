@@ -217,18 +217,41 @@ export default function ProfilePage() {
     
     try {
       console.log('Setting API key...');
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/set-api-key`,
-        { apiKey }
-      );
-      console.log('Set API key response:', response.data);
       
-      if (response.data.success) {
+      // Получаем данные пользователя и токен из localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token');
+      const userEmail = userData.email;
+      
+      if (!userEmail || !token) {
+        setError('Для установки API ключа необходимо авторизоваться');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('User email:', userEmail);
+      
+      // Используем публичный API для установки ключа с передачей токена
+      const response = await fetch(`${API_BASE_URL}/public/set-api-key`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ apiKey })
+      });
+      
+      const data = await response.json();
+      console.log('Set API key response:', data);
+      
+      if (data.success) {
         setSuccess('API ключ Wildberries успешно установлен');
+      } else {
+        setError(data.message || 'Ошибка установки API ключа');
       }
     } catch (err) {
       console.error('Error setting API key:', err);
-      setError(err.response?.data?.message || 'Ошибка установки API ключа');
+      setError('Ошибка установки API ключа. Проверьте консоль для деталей.');
     } finally {
       setLoading(false);
     }
@@ -241,16 +264,41 @@ export default function ProfilePage() {
     
     try {
       console.log('Removing API key...');
-      const response = await axios.delete(`${API_BASE_URL}/auth/api-key`);
-      console.log('Remove API key response:', response.data);
       
-      if (response.data.success) {
+      // Получаем данные пользователя и токен из localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token');
+      const userEmail = userData.email;
+      
+      if (!userEmail || !token) {
+        setError('Для удаления API ключа необходимо авторизоваться');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('User email:', userEmail);
+      
+      // Используем публичный API для удаления ключа с передачей токена
+      const response = await fetch(`${API_BASE_URL}/public/remove-api-key`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      console.log('Remove API key response:', data);
+      
+      if (data.success) {
         setSuccess('API ключ Wildberries успешно удален');
         setApiKey('');
+      } else {
+        setError(data.message || 'Ошибка удаления API ключа');
       }
     } catch (err) {
       console.error('Error removing API key:', err);
-      setError(err.response?.data?.message || 'Ошибка удаления API ключа');
+      setError('Ошибка удаления API ключа. Проверьте консоль для деталей.');
     } finally {
       setLoading(false);
     }

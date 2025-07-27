@@ -13,7 +13,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     Optional<User> findByVerificationCode(String verificationCode);
     
-    Optional<User> findByTelegramChatId(Long telegramChatId);
+    Optional<User> findByTelegramChatId(String telegramChatId);
     
     boolean existsByEmail(String email);
 } 

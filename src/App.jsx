@@ -38,6 +38,114 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   response => {
     console.log('Response from:', response.config.url, 'Status:', response.status);
+    
+    // Проверяем, содержит ли ответ информацию о истекшем токене
+    if (response.data && response.data.tokenExpired === true) {
+      console.log('Token expired detected in response');
+      
+      // Если в ответе есть новый токен, обновляем его в localStorage
+      if (response.data.newToken) {
+        console.log('Updating token with new one from response');
+        localStorage.setItem('token', response.data.newToken);
+        
+        // Добавляем новый токен к следующим запросам
+        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.newToken}`;
+        
+        // Показываем уведомление пользователю только если это не запрос на проверку подписки
+        if (!response.config.url.includes('/subscription/info')) {
+          console.log('Showing session update notification');
+          // Используем более ненавязчивое уведомление
+          const notification = document.createElement('div');
+          notification.textContent = 'Ваша сессия была обновлена';
+          notification.style.position = 'fixed';
+          notification.style.bottom = '20px';
+          notification.style.right = '20px';
+          notification.style.padding = '10px 20px';
+          notification.style.backgroundColor = '#4CAF50';
+          notification.style.color = 'white';
+          notification.style.borderRadius = '5px';
+          notification.style.zIndex = '9999';
+          document.body.appendChild(notification);
+          
+          // Удаляем уведомление через 3 секунды
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 3000);
+        }
+      } else {
+        // Если нового токена нет, пытаемся получить данные пользователя
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        // Если есть сохраненные учетные данные, пробуем авторизоваться снова
+        if (userData.email && userData._savedPassword) {
+          console.log('No new token provided, attempting to re-login with saved credentials');
+          
+          // Создаем новый экземпляр axios без перехватчиков для предотвращения цикла
+          const axiosInstance = axios.create({
+            baseURL: 'http://localhost:8080'
+          });
+          
+          // Выполняем авторизацию
+          axiosInstance.post('/api/auth/login', {
+            email: userData.email,
+            password: userData._savedPassword
+          })
+          .then(loginResponse => {
+            if (loginResponse.data.success) {
+              console.log('Re-login successful, updating token');
+              
+              // Обновляем токен и данные пользователя
+              localStorage.setItem('token', loginResponse.data.token);
+              localStorage.setItem('user', JSON.stringify({
+                ...loginResponse.data.user,
+                _savedPassword: userData._savedPassword
+              }));
+              
+              // Обновляем заголовок авторизации для будущих запросов
+              axios.defaults.headers.common['Authorization'] = `Bearer ${loginResponse.data.token}`;
+              
+              // Показываем уведомление
+              console.log('Showing session renewal notification');
+              const notification = document.createElement('div');
+              notification.textContent = 'Ваша сессия была обновлена';
+              notification.style.position = 'fixed';
+              notification.style.bottom = '20px';
+              notification.style.right = '20px';
+              notification.style.padding = '10px 20px';
+              notification.style.backgroundColor = '#4CAF50';
+              notification.style.color = 'white';
+              notification.style.borderRadius = '5px';
+              notification.style.zIndex = '9999';
+              document.body.appendChild(notification);
+              
+              // Удаляем уведомление через 3 секунды
+              setTimeout(() => {
+                document.body.removeChild(notification);
+              }, 3000);
+            } else {
+              // Если авторизация не удалась, перенаправляем на главную
+              console.log('Re-login failed, redirecting to login page');
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              window.location.href = '/';
+            }
+          })
+          .catch(loginError => {
+            console.error('Error during re-login:', loginError);
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/';
+          });
+        } else {
+          // Если нет сохраненных учетных данных, перенаправляем на страницу входа
+          console.log('No saved credentials, redirecting to login');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/';
+        }
+      }
+    }
+    
     return response;
   },
   error => {
@@ -80,8 +188,17 @@ axios.interceptors.response.use(
                   _savedPassword: userData._savedPassword // Сохраняем пароль для будущих повторных авторизаций
                 }));
                 
+                // Обновляем заголовок авторизации для будущих запросов
+                axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+                
                 // Повторяем оригинальный запрос с новым токеном
                 error.config.headers.Authorization = `Bearer ${response.data.token}`;
+                
+                // Добавляем случайный параметр для предотвращения кэширования
+                const url = new URL(error.config.url, window.location.origin);
+                url.searchParams.append('_t', Date.now());
+                error.config.url = url.pathname + url.search;
+                
                 return axios(error.config);
               } else {
                 // Если повторная авторизация не удалась, отклоняем промис
@@ -92,6 +209,36 @@ axios.interceptors.response.use(
               console.error('Re-login failed:', reLoginError);
               return Promise.reject(error);
             });
+          } else {
+            // Если нет сохраненных учетных данных, перенаправляем на страницу входа
+            console.log('No saved credentials, redirecting to login page');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // Показываем уведомление только если пользователь не на странице входа
+            if (!window.location.pathname.includes('/login') && !window.location.pathname === '/') {
+              const notification = document.createElement('div');
+              notification.textContent = 'Ваша сессия истекла. Выполните вход снова.';
+              notification.style.position = 'fixed';
+              notification.style.top = '20px';
+              notification.style.right = '20px';
+              notification.style.padding = '10px 20px';
+              notification.style.backgroundColor = '#f44336';
+              notification.style.color = 'white';
+              notification.style.borderRadius = '5px';
+              notification.style.zIndex = '9999';
+              document.body.appendChild(notification);
+              
+              // Удаляем уведомление и перенаправляем через 2 секунды
+              setTimeout(() => {
+                document.body.removeChild(notification);
+                window.location.href = '/';
+              }, 2000);
+            } else {
+              window.location.href = '/';
+            }
+            
+            return Promise.reject(error);
           }
         }
       }
@@ -136,7 +283,47 @@ export default function App() {
       // Проверяем токен, делая запрос к API
       axios.get('/api/subscription/info')
         .then(response => {
-          console.log('Token is valid:', response.data);
+          console.log('Token validation response:', response.data);
+          
+          // Проверяем, содержит ли ответ информацию о истекшем токене
+          if (response.data && response.data.tokenExpired === true) {
+            console.log('Token expired detected in initial check');
+            
+            // Если в ответе есть новый токен, обновляем его в localStorage
+            if (response.data.newToken) {
+              console.log('Updating token with new one from response');
+              localStorage.setItem('token', response.data.newToken);
+            } else {
+              // Если нового токена нет, но есть информация о пользователе, пробуем повторно войти
+              const userData = JSON.parse(localStorage.getItem('user') || '{}');
+              if (userData.email && userData._savedPassword) {
+                console.log('Attempting to re-login with saved credentials');
+                
+                // Пытаемся повторно войти в систему
+                axios.post('/api/auth/login', {
+                  email: userData.email,
+                  password: userData._savedPassword
+                })
+                .then(loginResponse => {
+                  if (loginResponse.data.success) {
+                    console.log('Re-login successful, updating token');
+                    
+                    // Обновляем токен и данные пользователя
+                    localStorage.setItem('token', loginResponse.data.token);
+                    localStorage.setItem('user', JSON.stringify({
+                      ...loginResponse.data.user,
+                      _savedPassword: userData._savedPassword
+                    }));
+                  }
+                })
+                .catch(loginError => {
+                  console.error('Re-login failed:', loginError);
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('user');
+                });
+              }
+            }
+          }
         })
         .catch(error => {
           console.error('Token validation error:', error);

@@ -2,11 +2,12 @@ package org.example.entity;
 
 import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -22,109 +23,164 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
     
-    @Column(name = "first_name", nullable = false)
+    @Column(name = "first_name")
     private String firstName;
     
-    @Column(name = "last_name", nullable = false)
+    @Column(name = "last_name")
     private String lastName;
     
     @Column(name = "phone_number")
     private String phoneNumber;
     
-    @Column(name = "telegram_chat_id")
-    private Long telegramChatId;
+    @Column(name = "is_verified", nullable = false)
+    private Boolean isVerified = false;
     
     @Column(name = "verification_code")
     private String verificationCode;
     
-    @Column(name = "is_verified")
-    private Boolean isVerified = false;
-    
     @Column(name = "verification_expires_at")
     private LocalDateTime verificationExpiresAt;
     
-    @Column(name = "wb_api_key", length = 1000)
-    private String wbApiKey;
+    @Column(name = "wildberries_api_key", length = 1000)
+    private String wildberriesApiKey;
+    
+    @Column(name = "telegram_chat_id")
+    private String telegramChatId;
     
     @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
     
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime updatedAt;
     
-    // Конструкторы
-    public User() {}
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
     
-    public User(Long id, String email, String password, String firstName, String lastName, 
-                String phoneNumber, Long telegramChatId, String verificationCode, Boolean isVerified,
-                LocalDateTime verificationExpiresAt, String wbApiKey, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+    
+    // Геттеры и сеттеры
+    
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
         this.id = id;
-        this.email = email;
-        this.password = password;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.phoneNumber = phoneNumber;
-        this.telegramChatId = telegramChatId;
-        this.verificationCode = verificationCode;
-        this.isVerified = isVerified;
-        this.verificationExpiresAt = verificationExpiresAt;
-        this.wbApiKey = wbApiKey;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
     }
     
-    // Геттеры
-    public Long getId() { return id; }
-    public String getEmail() { return email; }
-    public String getFirstName() { return firstName; }
-    public String getLastName() { return lastName; }
-    public String getPhoneNumber() { return phoneNumber; }
-    public Long getTelegramChatId() { return telegramChatId; }
-    public String getVerificationCode() { return verificationCode; }
-    public Boolean getIsVerified() { return isVerified; }
-    public LocalDateTime getVerificationExpiresAt() { return verificationExpiresAt; }
-    public String getWbApiKey() { return wbApiKey; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    
-    // Сеттеры
-    public void setId(Long id) { this.id = id; }
-    public void setEmail(String email) { this.email = email; }
-    public void setPassword(String password) { this.password = password; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
-    public void setTelegramChatId(Long telegramChatId) { this.telegramChatId = telegramChatId; }
-    public void setVerificationCode(String verificationCode) { this.verificationCode = verificationCode; }
-    public void setIsVerified(Boolean isVerified) { this.isVerified = isVerified; }
-    public void setVerificationExpiresAt(LocalDateTime verificationExpiresAt) { this.verificationExpiresAt = verificationExpiresAt; }
-    public void setWbApiKey(String wbApiKey) { this.wbApiKey = wbApiKey; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    
-    // Дополнительные методы для совместимости с сервисом
-    public String getWildberriesApiKey() { return wbApiKey; }
-    public void setWildberriesApiKey(String wildberriesApiKey) { this.wbApiKey = wildberriesApiKey; }
-    
-    // Метод для проверки верификации
-    public boolean isVerified() { 
-        return isVerified != null && isVerified; 
-    }
-    
-    // UserDetails methods
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.emptyList();
-    }
-    
-    @Override
-    public String getUsername() {
+    public String getEmail() {
         return email;
+    }
+    
+    public void setEmail(String email) {
+        this.email = email;
     }
     
     @Override
     public String getPassword() {
         return password;
+    }
+    
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    
+    public String getFirstName() {
+        return firstName;
+    }
+    
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+    
+    public String getLastName() {
+        return lastName;
+    }
+    
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+    
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+    
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+    
+    public Boolean getIsVerified() {
+        return isVerified;
+    }
+    
+    public void setIsVerified(Boolean isVerified) {
+        this.isVerified = isVerified;
+    }
+    
+    public String getVerificationCode() {
+        return verificationCode;
+    }
+    
+    public void setVerificationCode(String verificationCode) {
+        this.verificationCode = verificationCode;
+    }
+    
+    public LocalDateTime getVerificationExpiresAt() {
+        return verificationExpiresAt;
+    }
+    
+    public void setVerificationExpiresAt(LocalDateTime verificationExpiresAt) {
+        this.verificationExpiresAt = verificationExpiresAt;
+    }
+    
+    public String getWildberriesApiKey() {
+        return wildberriesApiKey;
+    }
+    
+    public void setWildberriesApiKey(String wildberriesApiKey) {
+        this.wildberriesApiKey = wildberriesApiKey;
+    }
+    
+    public String getTelegramChatId() {
+        return telegramChatId;
+    }
+    
+    public void setTelegramChatId(String telegramChatId) {
+        this.telegramChatId = telegramChatId;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    
+    // Методы UserDetails
+    
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+    
+    @Override
+    public String getUsername() {
+        return email;
     }
     
     @Override
@@ -144,8 +200,16 @@ public class User implements UserDetails {
     
     @Override
     public boolean isEnabled() {
-        // Временно отключаем проверку верификации для тестирования
         return true;
-        // TODO: Вернуть проверку верификации: return isVerified != null && isVerified;
+    }
+    
+    // Дополнительные методы для совместимости
+    
+    public boolean isVerified() {
+        return this.isVerified != null && this.isVerified;
+    }
+    
+    public String getWbApiKey() {
+        return this.wildberriesApiKey;
     }
 } 

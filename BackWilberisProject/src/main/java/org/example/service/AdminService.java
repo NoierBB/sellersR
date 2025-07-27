@@ -280,7 +280,7 @@ public class AdminService {
             user.getFirstName(),
             user.getLastName(),
             user.isVerified(),
-            user.getWildberriesApiKey() != null && !user.getWildberriesApiKey().isEmpty(),
+            user.getWbApiKey() != null && !user.getWbApiKey().isEmpty(),
             user.getCreatedAt(),
             null, // lastLoginAt пока что null, так как этого поля нет в User
             0, // Пока что 0 API вызовов

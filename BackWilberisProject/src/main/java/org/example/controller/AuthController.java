@@ -15,7 +15,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3002", "http://localhost:5173"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3002", "http://localhost:5173", "http://127.0.0.1:5173", "http://127.0.0.1:3000"})
 public class AuthController {
     
     private final AuthService authService;
@@ -33,6 +33,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
+            System.out.println("📝 Получен запрос на регистрацию: " + request.getEmail());
             AuthResponse response = authService.register(request);
             String verificationCode = authService.getVerificationCode(request.getEmail());
             
@@ -45,7 +46,8 @@ public class AuthController {
                 "telegramBot", "@SellersWilberis_bot"
             ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
+            System.err.println("❌ Ошибка регистрации: " + e.getMessage());
+            return ResponseEntity.ok(Map.of(
                 "success", false,
                 "message", e.getMessage()
             ));
@@ -55,6 +57,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
+            System.out.println("🔑 Получен запрос на авторизацию: " + request.getEmail());
             AuthResponse response = authService.authenticate(request);
             
             return ResponseEntity.ok(Map.of(
@@ -64,7 +67,8 @@ public class AuthController {
                 "user", response
             ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
+            System.err.println("❌ Ошибка авторизации: " + e.getMessage());
+            return ResponseEntity.ok(Map.of(
                 "success", false,
                 "message", e.getMessage()
             ));
@@ -76,8 +80,10 @@ public class AuthController {
         try {
             String verificationCode = request.get("verificationCode");
             
+            System.out.println("🔍 Получен запрос на верификацию с кодом: " + verificationCode);
+            
             if (verificationCode == null || verificationCode.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of(
+                return ResponseEntity.ok(Map.of(
                     "success", false,
                     "message", "Код верификации не может быть пустым"
                 ));
@@ -86,20 +92,213 @@ public class AuthController {
             boolean verified = authService.verifyUser(verificationCode);
             
             if (verified) {
+                System.out.println("✅ Верификация успешна");
                 return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Верификация прошла успешно"
                 ));
             } else {
-                return ResponseEntity.badRequest().body(Map.of(
+                System.out.println("❌ Ошибка верификации: неверный или устаревший код");
+                return ResponseEntity.ok(Map.of(
                     "success", false,
                     "message", "Неверный или устаревший код верификации"
                 ));
             }
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
+            System.err.println("❌ Ошибка верификации: " + e.getMessage());
+            return ResponseEntity.ok(Map.of(
                 "success", false,
                 "message", e.getMessage()
+            ));
+        }
+    }
+    
+    /**
+     * Получение информации о пользователе
+     */
+    @GetMapping("/user-info")
+    public ResponseEntity<?> getUserInfo(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            System.out.println("🔍 Получен запрос на получение информации о пользователе");
+            
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Требуется авторизация"
+                ));
+            }
+            
+            String token = authHeader.substring(7);
+            String userEmail = authService.extractEmailFromToken(token);
+            
+            if (userEmail == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Недействительный токен"
+                ));
+            }
+            
+            User user = userRepository.findByEmail(userEmail)
+                    .orElse(null);
+            
+            if (user == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Пользователь не найден"
+                ));
+            }
+            
+            boolean hasSubscription = subscriptionService.hasActiveSubscription(user);
+            boolean hasApiKey = user.getWildberriesApiKey() != null && !user.getWildberriesApiKey().trim().isEmpty();
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "user", Map.of(
+                    "id", user.getId(),
+                    "email", user.getEmail(),
+                    "firstName", user.getFirstName() != null ? user.getFirstName() : "",
+                    "lastName", user.getLastName() != null ? user.getLastName() : "",
+                    "phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : "",
+                    "isVerified", user.getIsVerified(),
+                    "hasApiKey", hasApiKey,
+                    "hasSubscription", hasSubscription
+                )
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка получения информации о пользователе: " + e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "message", "Ошибка получения информации о пользователе: " + e.getMessage()
+            ));
+        }
+    }
+    
+    /**
+     * Обновление профиля пользователя
+     */
+    @PostMapping("/update-profile")
+    public ResponseEntity<?> updateProfile(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody Map<String, String> request) {
+        try {
+            System.out.println("✏️ Получен запрос на обновление профиля");
+            
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Требуется авторизация"
+                ));
+            }
+            
+            String token = authHeader.substring(7);
+            String userEmail = authService.extractEmailFromToken(token);
+            
+            if (userEmail == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Недействительный токен"
+                ));
+            }
+            
+            User user = userRepository.findByEmail(userEmail)
+                    .orElse(null);
+            
+            if (user == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Пользователь не найден"
+                ));
+            }
+            
+            // Обновляем данные пользователя
+            if (request.containsKey("firstName")) {
+                user.setFirstName(request.get("firstName"));
+            }
+            
+            if (request.containsKey("lastName")) {
+                user.setLastName(request.get("lastName"));
+            }
+            
+            if (request.containsKey("phoneNumber")) {
+                user.setPhoneNumber(request.get("phoneNumber"));
+            }
+            
+            userRepository.save(user);
+            
+            System.out.println("✅ Профиль пользователя обновлен успешно: " + userEmail);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Профиль успешно обновлен"
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка обновления профиля: " + e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "message", "Ошибка обновления профиля: " + e.getMessage()
+            ));
+        }
+    }
+    
+    /**
+     * Изменение пароля пользователя
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody Map<String, String> request) {
+        try {
+            System.out.println("🔐 Получен запрос на изменение пароля");
+            
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Требуется авторизация"
+                ));
+            }
+            
+            String token = authHeader.substring(7);
+            String userEmail = authService.extractEmailFromToken(token);
+            
+            if (userEmail == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Недействительный токен"
+                ));
+            }
+            
+            String currentPassword = request.get("currentPassword");
+            String newPassword = request.get("newPassword");
+            
+            if (currentPassword == null || newPassword == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Необходимо указать текущий и новый пароль"
+                ));
+            }
+            
+            boolean changed = authService.changePassword(userEmail, currentPassword, newPassword);
+            
+            if (changed) {
+                System.out.println("✅ Пароль изменен успешно: " + userEmail);
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Пароль успешно изменен"
+                ));
+            } else {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Неверный текущий пароль"
+                ));
+            }
+            
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка изменения пароля: " + e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "message", "Ошибка изменения пароля: " + e.getMessage()
             ));
         }
     }
@@ -108,9 +307,28 @@ public class AuthController {
      * Получение информации о текущем API ключе
      */
     @GetMapping("/api-key")
-    public ResponseEntity<?> getApiKey(Authentication auth) {
+    public ResponseEntity<?> getApiKey(@RequestParam(required = false) String email, 
+                                     @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            String userEmail = auth.getName();
+            // Извлекаем email из параметра или токена
+            String userEmail = email;
+            
+            // Если email не указан в параметре, пробуем извлечь из токена
+            if (userEmail == null && authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                userEmail = authService.extractEmailFromToken(token);
+            }
+            
+            // Если не удалось получить email, возвращаем ошибку
+            if (userEmail == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Требуется указать email или авторизоваться"
+                ));
+            }
+            
+            System.out.println("🔍 Getting API key for user: " + userEmail);
+            
             User user = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
             
@@ -134,6 +352,7 @@ public class AuthController {
             ));
             
         } catch (Exception e) {
+            System.err.println("❌ Error getting API key: " + e.getMessage());
             return ResponseEntity.ok(Map.of(
                 "success", false,
                 "message", "Ошибка получения API ключа: " + e.getMessage()
@@ -145,9 +364,29 @@ public class AuthController {
      * Установка API ключа Wildberries
      */
     @PostMapping("/set-api-key")
-    public ResponseEntity<?> setApiKey(Authentication auth, @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> setApiKey(@RequestParam(required = false) String email, 
+                                     @RequestHeader(value = "Authorization", required = false) String authHeader,
+                                     @RequestBody Map<String, String> request) {
         try {
-            String userEmail = auth.getName();
+            // Извлекаем email из параметра или токена
+            String userEmail = email;
+            
+            // Если email не указан в параметре, пробуем извлечь из токена
+            if (userEmail == null && authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                userEmail = authService.extractEmailFromToken(token);
+            }
+            
+            // Если не удалось получить email, возвращаем ошибку
+            if (userEmail == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Требуется указать email или авторизоваться"
+                ));
+            }
+            
+            System.out.println("🔍 Setting API key for user: " + userEmail);
+            
             User user = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
             
@@ -172,12 +411,15 @@ public class AuthController {
             user.setWildberriesApiKey(apiKey.trim());
             userRepository.save(user);
             
+            System.out.println("✅ API key set successfully for user: " + userEmail);
+            
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "API ключ Wildberries успешно установлен"
             ));
             
         } catch (Exception e) {
+            System.err.println("❌ Error setting API key: " + e.getMessage());
             return ResponseEntity.ok(Map.of(
                 "success", false,
                 "message", "Ошибка установки API ключа: " + e.getMessage()
@@ -189,14 +431,35 @@ public class AuthController {
      * Удаление API ключа
      */
     @DeleteMapping("/api-key")
-    public ResponseEntity<?> deleteApiKey(Authentication auth) {
+    public ResponseEntity<?> deleteApiKey(@RequestParam(required = false) String email,
+                                        @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            String userEmail = auth.getName();
+            // Извлекаем email из параметра или токена
+            String userEmail = email;
+            
+            // Если email не указан в параметре, пробуем извлечь из токена
+            if (userEmail == null && authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                userEmail = authService.extractEmailFromToken(token);
+            }
+            
+            // Если не удалось получить email, возвращаем ошибку
+            if (userEmail == null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Требуется указать email или авторизоваться"
+                ));
+            }
+            
+            System.out.println("🔍 Removing API key for user: " + userEmail);
+            
             User user = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
             
             user.setWildberriesApiKey(null);
             userRepository.save(user);
+            
+            System.out.println("✅ API key removed successfully for user: " + userEmail);
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -204,6 +467,7 @@ public class AuthController {
             ));
             
         } catch (Exception e) {
+            System.err.println("❌ Error removing API key: " + e.getMessage());
             return ResponseEntity.ok(Map.of(
                 "success", false,
                 "message", "Ошибка удаления API ключа: " + e.getMessage()

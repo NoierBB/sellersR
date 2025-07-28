@@ -1419,35 +1419,6 @@ body.dark-theme {
   color: var(--text-color);
 }
 
-/* Стили для таблиц аналитики */
-.table-scroll {
-  overflow-x: auto;
-  margin: 1rem 0;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-}
-
-.table-scroll table {
-  min-width: 100%;
-  white-space: nowrap;
-}
-
-.table-scroll th,
-.table-scroll td {
-  padding: 8px 12px;
-  border-right: 1px solid #e0e0e0;
-  font-size: 13px;
-  min-width: 100px;
-}
-
-.table-scroll th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
 /* Цветовая индикация прибыли/убытков */
 .positive {
   color: #28a745;

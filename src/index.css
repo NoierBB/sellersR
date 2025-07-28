@@ -1,15 +1,15 @@
-/* Global Styles */
+/* Global Styles
 :root {
   --primary-color: #BEB5A9;
   --text-color: #f5f7fa;
-  --bg-color: #D3D3D3;
+  --bg-color: #181404;
   --card-color: #505052;
   --card-color1: #5F5B4B;
   --card-color2: #eeeada;
   --dark-bg: #181404;
   --dark-card: #505052;
   --dark-text: #e0e0e0;
-}
+} */
 
 * {
   margin: 0;

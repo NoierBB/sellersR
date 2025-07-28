@@ -1,3 +1,4 @@
+import './Analytics.css';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -405,35 +406,10 @@ export default function Analytics() {
       </div>
       
       <div className="analytics-content">
-        {loading ? (
-          <div className="loading-container">
-            <FontAwesomeIcon icon={faSpinner} spin />
-            <p>Загрузка данных...</p>
-          </div>
-        ) : (
-          <div className="data-container">
-            {/* Отладочная информация */}
-            {process.env.NODE_ENV === 'development' && (
-              <div style={{background: '#f0f0f0', padding: '10px', margin: '10px 0', fontSize: '12px'}}>
-                <strong>Debug Info:</strong><br/>
-                Active Tab: {activeTab}<br/>
-                Has Financial Data: {analyticsData.financial ? 'Yes' : 'No'}<br/>
-                Has Financial Weeks: {analyticsData.financial && analyticsData.financial.weeks ? 'Yes' : 'No'}<br/>
-                Has Financial Totals: {analyticsData.financial && analyticsData.financial.totals ? 'Yes' : 'No'}<br/>
-                Financial Weeks Count: {analyticsData.financial && analyticsData.financial.weeks ? analyticsData.financial.weeks.length : 0}<br/>
-                Has Unit Economics Data: {analyticsData['unit-economics'] ? 'Yes' : 'No'}<br/>
-                Has Unit Economics Items: {analyticsData['unit-economics'] && analyticsData['unit-economics'].items ? 'Yes' : 'No'}<br/>
-                Unit Economics Items Count: {analyticsData['unit-economics'] && analyticsData['unit-economics'].items ? analyticsData['unit-economics'].items.length : 0}<br/>
-                Has Advertising Data: {analyticsData.advertising ? 'Yes' : 'No'}<br/>
-                Has Advertising Campaigns: {analyticsData.advertising && analyticsData.advertising.campaigns ? 'Yes' : 'No'}<br/>
-                Advertising Campaigns Count: {analyticsData.advertising && analyticsData.advertising.campaigns ? analyticsData.advertising.campaigns.length : 0}<br/>
-              </div>
-            )}
-            
-            {/* Содержимое для вкладки "Финансовый отчет" */}
             {activeTab === 'financial' && analyticsData.financial && analyticsData.financial.weeks && analyticsData.financial.totals && (
               <div className="financial-report">
                 <h2>Финансовый отчет</h2>
+                <div className="table-container"> 
                 <table>
                   <thead>
                     <tr>
@@ -497,13 +473,16 @@ export default function Analytics() {
                     </tr>
                   </tfoot>
                 </table>
+                </div>
               </div>
+        
             )}
             
             {/* Содержимое для вкладки "Юнит экономика ВБ" */}
             {activeTab === 'unit-economics' && analyticsData['unit-economics'] && analyticsData['unit-economics'].items && (
               <div className="unit-economics">
                 <h2>Юнит экономика ВБ</h2>
+                <div className="table-container"> 
                 <div className="table-scroll">
                   <table>
                     <thead>
@@ -589,6 +568,7 @@ export default function Analytics() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -598,6 +578,7 @@ export default function Analytics() {
             {activeTab === 'advertising' && analyticsData.advertising && analyticsData.advertising.campaigns && (
               <div className="advertising-campaigns">
                 <h2>РК таблица</h2>
+                <div className="table-container"> 
                 <div className="table-scroll">
                   <table>
                     <thead>
@@ -669,6 +650,7 @@ export default function Analytics() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -681,8 +663,8 @@ export default function Analytics() {
               </div>
             )}
           </div>
-        )}
+        
       </div>
-    </div>
+    
   );
 }

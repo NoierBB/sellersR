@@ -1,0 +1,376 @@
+/* Основные стили */
+.analytics-page {
+  max-width: 100%;
+  padding: 20px;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.analytics-page h1 {
+  color: var(--heading-color);
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Стили для сообщений */
+.subscription-required,
+.api-key-required,
+.error-container {
+  background-color: var(--card-bg);
+  border-radius: 10px;
+  padding: 20px;
+  max-width: 100%;
+  margin: 0 auto 20px;
+  text-align: center;
+  box-shadow: var(--card-shadow);
+}
+
+.subscription-required h2,
+.api-key-required h2,
+.error-container h2 {
+  color: var(--heading-color);
+  margin: 15px 0 10px;
+  font-size: 1.3rem;
+}
+
+.warning-icon {
+  color: var(--warning);
+  font-size: 2.5rem;
+}
+
+.info-icon {
+  color: var(--info);
+  font-size: 2.5rem;
+}
+
+.error-icon {
+  color: var(--error);
+  font-size: 2.5rem;
+}
+
+/* Форма API ключа */
+.api-key-form {
+  max-width: 100%;
+  margin: 20px auto;
+  text-align: left;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--heading-color);
+  font-size: 0.9rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  box-sizing: border-box;
+}
+
+/* Кнопки */
+.primary-button {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 10px;
+}
+
+/* Вкладки */
+.analytics-tabs {
+  display: flex;
+  overflow-x: auto;
+  margin-bottom: 20px;
+  gap: 8px;
+  padding-bottom: 5px;
+  scrollbar-width: none; /* Firefox */
+}
+
+.analytics-tabs::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.tab-button {
+  padding: 8px 16px;
+  background-color: var(--tab-inactive-bg);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--heading-color);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tab-button.active {
+  background-color: var(--primary);
+  color: white;
+}
+
+/* Контент аналитики */
+.analytics-content {
+  background-color: #555;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+/* Стили для всех таблиц */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin: 15px 0;
+  border-radius: 8px;
+  position: relative;
+}
+
+table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+th, td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+th {
+  background-color: var(--primary);
+  color: white;
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+}
+
+tr:nth-child(even) {
+  background-color: var(--even-row-bg);
+}
+
+tr:hover {
+  background-color: var(--hover-bg);
+}
+
+.positive {
+  color: var(--success);
+  font-weight: 500;
+}
+
+.negative {
+  color: var(--error);
+  font-weight: 500;
+}
+
+.totals-row {
+  background-color: var(--heading-color) !important;
+  color: white;
+  font-weight: 500;
+}
+
+/* Финансовый отчет - специальные стили */
+.financial-report table {
+  min-width: 1200px;
+}
+
+.financial-report th:nth-child(1),
+.financial-report td:nth-child(1),
+.financial-report th:nth-child(2),
+.financial-report td:nth-child(2) {
+  position: sticky;
+  left: 0;
+  background-color: var(--card-bg);
+  z-index: 2;
+}
+
+.financial-report th:nth-child(2),
+.financial-report td:nth-child(2) {
+  left: 50px;
+}
+
+/* Юнит-экономика и РК таблицы */
+.unit-economics table,
+.advertising-campaigns table {
+  min-width: 1500px;
+}
+
+/* Загрузка и нет данных */
+.loading-container,
+.no-data {
+  text-align: center;
+  padding: 30px;
+  color: var(--secondary-text);
+}
+
+.loading-container svg,
+.no-data svg {
+  font-size: 2rem;
+  margin-bottom: 15px;
+}
+
+/* Адаптация для планшетов */
+@media (min-width: 768px) {
+  .analytics-page {
+    padding: 30px;
+  }
+  
+  .analytics-page h1 {
+    font-size: 2rem;
+  }
+  
+  .primary-button {
+    width: auto;
+    padding: 10px 25px;
+  }
+  
+  .analytics-tabs {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .tab-button {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Адаптация для десктопов */
+@media (min-width: 992px) {
+  .analytics-page {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .financial-report table {
+    min-width: 100%;
+  }
+  
+  .unit-economics table,
+  .advertising-campaigns table {
+    min-width: 100%;
+  }
+}
+
+/* Темная тема */
+.dark-theme {
+  --bg-color: #1a1a1a;
+  --text-color: #f0f0f0;
+  --heading-color: #ffffff;
+  --card-bg: #2d2d2d;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --border-color: #444;
+  --hover-bg: #3a3a3a;
+  --even-row-bg: #252525;
+  --input-border: #555;
+  --tab-inactive-bg: #3a3a3a;
+  --tab-hover-bg: #4a4a4a;
+  --secondary-text: #aaaaaa;
+}
+/* Контейнер для таблиц с горизонтальным скроллом */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+  margin: 15px 0;
+  border-radius: 8px;
+  background-color: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  position: relative;
+}
+
+/* Кастомный скроллбар для таблиц */
+.table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: var(--border-color);
+  border-radius: 4px;
+  
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+/* Стили для строки итогов */
+.totals-row {
+  background: linear-gradient(135deg, var(--primary), #2c3e50) !important;
+  color: white;
+  font-weight: 600;
+  position: sticky;
+  bottom: 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.totals-row td {
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none !important;
+  padding: 10px 12px !important;
+}
+
+.totals-row .positive,
+.totals-row .negative {
+  color: white !important;
+  font-weight: 600;
+}
+
+/* Фиксированные первые колонки для финансового отчета */
+.financial-report th:first-child,
+.financial-report td:first-child,
+.financial-report th:nth-child(2),
+.financial-report td:nth-child(2) {
+  position: sticky;
+  left: 0;
+  background-color: var(--card-bg);
+  z-index: 3;
+  box-shadow: 1px 0 0 var(--border-color);
+}
+
+.financial-report th:nth-child(2),
+.financial-report td:nth-child(2) {
+  left: 50px; /* Ширина первой колонки */
+  z-index: 2;
+}
+
+/* Темная тема для строки итогов */
+.dark-theme .totals-row {
+  background: linear-gradient(135deg, var(--primary), #1a1a1a) !important;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .totals-row td {
+  border-top: 2px solid rgba(255, 255, 255, 0.05);
+}
+/* Общие переходы */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}

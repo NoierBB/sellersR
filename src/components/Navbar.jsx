@@ -53,10 +53,10 @@ export default function Navbar() {
       <nav>
         <ul className="nav-links">
           <li><Link to="/">Главная</Link></li>
-          <li><a href="#">Клиенты</a></li>
-          <li><a href="#">Заказы</a></li>
+          {/* <li><a href="#">Клиенты</a></li> */}
+          {/* <li><a href="#">Заказы</a></li> */}
           <li><Link to="/analytics">Аналитика</Link></li>
-          <li><a href="#">Оптимизация</a></li>
+          {/* <li><a href="#">Оптимизация</a></li> */}
           <li><Link to="/about">О нас</Link></li>
         </ul>
         

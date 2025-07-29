@@ -7,8 +7,8 @@ import MainBanner from './components/MainBanner';
 import FeatureCard from './components/FeatureCard';
 import CtaSection from './components/CtaSection';
 import SocialPopup from './components/SocialPopup';
-import AboutPage from './components/AboutPage';
-import Analytics from './components/Analitic';
+import AboutPage from './components/About/AboutPage';
+import Analytics from './components/Analytics/Analitic';
 import SubscriptionPage from './components/SubscriptionPage';
 import ProfilePage from './components/ProfilePage';
 

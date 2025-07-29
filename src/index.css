@@ -1,4 +1,4 @@
-/* Global Styles
+
 :root {
   --primary-color: #BEB5A9;
   --text-color: #f5f7fa;
@@ -9,7 +9,7 @@
   --dark-bg: #181404;
   --dark-card: #505052;
   --dark-text: #e0e0e0;
-} */
+}
 
 * {
   margin: 0;

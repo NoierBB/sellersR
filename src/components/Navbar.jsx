@@ -64,9 +64,9 @@ export default function Navbar() {
           <button className="nav-btn" id="notification-btn" onClick={() => alert('Здесь будут ваши уведомления')}>
             <FontAwesomeIcon icon={faBell} />
           </button>
-          <button className="nav-btn" id="theme-toggle" onClick={toggleTheme}>
+          {/* <button className="nav-btn" id="theme-toggle" onClick={toggleTheme}>
             <FontAwesomeIcon icon={darkMode ? faSun : faMoon} />
-          </button>
+          </button> */}
           
           {isLoggedIn ? (
             <div className="user-menu-container">

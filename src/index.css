@@ -1,31 +1,34 @@
 
-:root {
-  --primary-color: #BEB5A9;
-  --text-color: #f5f7fa;
-  --bg-color: #181404;
-  --card-color: #505052;
-  --card-color1: #5F5B4B;
-  --card-color2: #eeeada;
-  --dark-bg: #181404;
-  --dark-card: #505052;
-  --dark-text: #e0e0e0;
+/* Импорт глобальных стилей SellLab */
+@import './styles/globals/index.css';
+
+/* Дополнительные стили для React приложения */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Arial', sans-serif;
-  transition: background-color 0.3s, color 0.3s;
+/* Кастомные стили для React Router */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
-body {
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  line-height: 1.6;
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
 }
 
-body.dark-theme {
-  background-color: var(--dark-bg);
-  color: var(--dark-text);
+.page-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
 }

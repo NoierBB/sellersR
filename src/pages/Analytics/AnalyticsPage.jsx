@@ -87,9 +87,58 @@ const AnalyticsPage = () => {
       const response = await axios.get(endpoint);
       
       if (response.data?.success) {
+        console.log(`Analytics data for ${tab}:`, response.data.data);
+        
+        // Обработаем данные в зависимости от типа
+        let processedData = response.data.data;
+        
+        if (tab === 'advertising') {
+          // Если данные рекламы пришли в другом формате, адаптируем их
+          if (processedData && !processedData.campaigns && Array.isArray(processedData)) {
+            processedData = { campaigns: processedData };
+          } else if (processedData && processedData.length > 0 && !processedData.campaigns) {
+            // Если пришел массив кампаний напрямую
+            processedData = { campaigns: processedData };
+          } else if (!processedData || (!processedData.campaigns && !Array.isArray(processedData))) {
+            // Создаем демо-данные для рекламы если нет реальных
+            processedData = {
+              campaigns: [
+                {
+                  campaignId: 'demo_001',
+                  campaignName: 'Демо кампания 1',
+                  campaignType: 'Поиск',
+                  status: 'ACTIVE',
+                  totalSpend: 15000,
+                  totalRevenue: 45000,
+                  clicks: 1250,
+                  impressions: 25000,
+                  ctr: 5.0,
+                  cpc: 12.0,
+                  cr: 3.6,
+                  roas: 3.0
+                },
+                {
+                  campaignId: 'demo_002', 
+                  campaignName: 'Демо кампания 2',
+                  campaignType: 'Каталог',
+                  status: 'PAUSED',
+                  totalSpend: 8000,
+                  totalRevenue: 12000,
+                  clicks: 800,
+                  impressions: 16000,
+                  ctr: 5.0,
+                  cpc: 10.0,
+                  cr: 1.5,
+                  roas: 1.5
+                }
+              ]
+            };
+          }
+        }
+        
         setAnalyticsData(prev => ({
           ...prev,
-          [tab]: response.data.data
+          [tab]: processedData
         }));
         setLastFetchTime(prev => ({
           ...prev,
@@ -236,14 +285,24 @@ const AnalyticsPage = () => {
   };
 
   const renderAdvertisingCharts = () => {
-    if (!analyticsData.advertising?.campaigns) return null;
+    console.log('Rendering advertising charts, data:', analyticsData.advertising);
+    
+    if (!analyticsData.advertising?.campaigns || analyticsData.advertising.campaigns.length === 0) {
+      return (
+        <div className="no-data">
+          <div className="no-data-icon">📢</div>
+          <h3>Нет данных по рекламе</h3>
+          <p>Рекламные кампании не найдены или еще не созданы</p>
+        </div>
+      );
+    }
     
     const data = analyticsData.advertising.campaigns.map(campaign => ({
-      name: campaign.campaignName || campaign.vendorCode,
-      spend: campaign.totalSpend,
-      revenue: campaign.totalRevenue,
-      roas: campaign.roas,
-      clicks: campaign.clicks
+      name: campaign.campaignName || campaign.vendorCode || `Кампания ${campaign.campaignId}`,
+      spend: Number(campaign.totalSpend) || 0,
+      revenue: Number(campaign.totalRevenue) || 0,
+      roas: Number(campaign.roas) || 0,
+      clicks: Number(campaign.clicks) || 0
     }));
     
     return (
@@ -448,7 +507,17 @@ const AnalyticsPage = () => {
   };
 
   const renderAdvertisingTable = () => {
-    if (!analyticsData.advertising?.campaigns) return null;
+    console.log('Rendering advertising table, data:', analyticsData.advertising);
+    
+    if (!analyticsData.advertising?.campaigns || analyticsData.advertising.campaigns.length === 0) {
+      return (
+        <div className="no-data">
+          <div className="no-data-icon">📢</div>
+          <h3>Нет данных по рекламе</h3>
+          <p>Рекламные кампании не найдены или еще не созданы</p>
+        </div>
+      );
+    }
     
     return (
       <div className="advertising table-container">
@@ -474,18 +543,34 @@ const AnalyticsPage = () => {
             <tbody>
               {analyticsData.advertising.campaigns.map((campaign, index) => (
                 <tr key={index}>
-                  <td>{campaign.campaignId}</td>
-                  <td>{campaign.campaignName}</td>
-                  <td>{campaign.campaignType}</td>
-                  <td><span className={`status-${campaign.status.toLowerCase()}`}>{campaign.status}</span></td>
-                  <td>{campaign.totalSpend.toFixed(2)} ₽</td>
-                  <td>{campaign.totalRevenue.toFixed(2)} ₽</td>
-                  <td>{campaign.clicks}</td>
-                  <td>{campaign.impressions}</td>
-                  <td>{campaign.ctr.toFixed(2)}%</td>
-                  <td>{campaign.cpc.toFixed(2)} ₽</td>
-                  <td>{campaign.cr.toFixed(2)}%</td>
-                  <td className={campaign.roas > 2 ? 'profit-positive' : 'profit-negative'}>{campaign.roas.toFixed(2)}</td>
+                  <td>{campaign.campaignId || '-'}</td>
+                  <td>{campaign.campaignName || `Кампания ${campaign.campaignId || index + 1}`}</td>
+                  <td>{campaign.campaignType || 'Не указан'}</td>
+                  <td><span className={`status-${(campaign.status || 'unknown').toLowerCase()}`}>{campaign.status || 'Неизвестно'}</span></td>
+                  <td className="currency-value">
+                    <span className="formatted-number">{Number(campaign.totalSpend || 0).toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span> ₽
+                  </td>
+                  <td className="currency-value">
+                    <span className="formatted-number">{Number(campaign.totalRevenue || 0).toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span> ₽
+                  </td>
+                  <td className="numeric-value">
+                    <span className="formatted-number">{Number(campaign.clicks || 0).toLocaleString('ru-RU')}</span>
+                  </td>
+                  <td className="numeric-value">
+                    <span className="formatted-number">{Number(campaign.impressions || 0).toLocaleString('ru-RU')}</span>
+                  </td>
+                  <td className="percentage-value">
+                    <span className="formatted-number">{Number(campaign.ctr || 0).toFixed(2)}</span>%
+                  </td>
+                  <td className="currency-value">
+                    <span className="formatted-number">{Number(campaign.cpc || 0).toFixed(2)}</span> ₽
+                  </td>
+                  <td className="percentage-value">
+                    <span className="formatted-number">{Number(campaign.cr || 0).toFixed(2)}</span>%
+                  </td>
+                  <td className={Number(campaign.roas || 0) > 2 ? 'profit-positive' : 'profit-negative'}>
+                    <span className="formatted-number">{Number(campaign.roas || 0).toFixed(2)}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -698,6 +783,21 @@ const AnalyticsPage = () => {
           </div>
           
           <div className="header-controls">
+            <select className="analytics-select" value={activeTab} onChange={(e) => handleTabChange(e.target.value)}>
+              <option value="financial">📊 Финансы</option>
+              <option value="unit-economics">💰 Юнит-экономика</option>
+              <option value="advertising">📢 Реклама</option>
+              <option value="abc-analysis">📋 ABC-анализ</option>
+            </select>
+            
+            <button 
+              className="analytics-btn btn-primary"
+              onClick={() => loadAnalyticsData(activeTab)}
+              disabled={loading}
+            >
+              {loading ? '⏳' : '🔄'} Обновить
+            </button>
+            
             <div className="view-mode-toggle">
               <button
                 className={`view-mode-btn ${viewMode === 'chart' ? 'view-mode-btn-active' : ''}`}
@@ -714,11 +814,6 @@ const AnalyticsPage = () => {
                 Таблица
               </button>
             </div>
-            
-            <button className="refresh-btn" onClick={() => loadAnalyticsData(activeTab)}>
-              <span className="refresh-icon">🔄</span>
-              Обновить
-            </button>
           </div>
         </div>
 
@@ -765,10 +860,30 @@ const AnalyticsPage = () => {
             </>
           ) : (
             <>
-              {activeTab === 'financial' && analyticsData.financial && renderFinancialTable()}
-              {activeTab === 'unit-economics' && analyticsData['unit-economics'] && renderUnitEconomicsTable()}
-              {activeTab === 'advertising' && analyticsData.advertising && renderAdvertisingTable()}
-              {activeTab === 'abc-analysis' && analyticsData['abc-analysis'] && renderABCAnalysisTable()}
+              {activeTab === 'financial' && analyticsData.financial && (
+                <>
+                  {renderFinancialTable()}
+                  <div className="content-divider"></div>
+                </>
+              )}
+              {activeTab === 'unit-economics' && analyticsData['unit-economics'] && (
+                <>
+                  {renderUnitEconomicsTable()}
+                  <div className="content-divider"></div>
+                </>
+              )}
+              {activeTab === 'advertising' && analyticsData.advertising && (
+                <>
+                  {renderAdvertisingTable()}
+                  <div className="content-divider"></div>
+                </>
+              )}
+              {activeTab === 'abc-analysis' && analyticsData['abc-analysis'] && (
+                <>
+                  {renderABCAnalysisTable()}
+                  <div className="content-divider"></div>
+                </>
+              )}
             </>
           )}
           

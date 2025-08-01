@@ -22,8 +22,6 @@ axios.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Request headers:', config.headers);
-      console.log('Request URL:', config.url);
     }
     return config;
   },
@@ -205,7 +203,7 @@ const showNotification = (message, type = 'info') => {
   }, 3000);
 };
 
-export default function App() {
+function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Проверка валидности токена при загрузке приложения
@@ -298,3 +296,5 @@ export default function App() {
     </Router>
   );
 }
+
+export default App;

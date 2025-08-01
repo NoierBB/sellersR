@@ -1,6 +1,7 @@
 .about-page {
   flex: 1;
   overflow-x: hidden;
+  padding-top: 80px; /* Отступ от навбара */
 }
 
 /* Эффекты загрузки страницы */
@@ -1107,5 +1108,12 @@
   
   .cta-title {
     font-size: var(--font-size-2xl);
+  }
+}
+
+/* Мобильные отступы от навбара */
+@media (max-width: 768px) {
+  .about-page {
+    padding-top: 70px; /* Меньший отступ на мобильных */
   }
 }

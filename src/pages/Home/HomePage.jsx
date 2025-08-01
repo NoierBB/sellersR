@@ -84,17 +84,6 @@ const HomePage = () => {
                 для продавцов маркетплейса Wildberries.
               </p>
               
-              <div className="hero-buttons">
-                <Link to="/subscription" className="btn btn-primary">
-                  <span>Начать бесплатно</span>
-                  <span className="btn-icon">🚀</span>
-                </Link>
-                <Link to="/about" className="btn btn-outline">
-                  <span>Узнать больше</span>
-                  <span className="btn-icon">ℹ️</span>
-                </Link>
-              </div>
-              
               <div className="hero-stats">
                 {stats.map((stat, index) => (
                   <div key={index} className="stat-item">
@@ -198,32 +187,72 @@ const HomePage = () => {
               </div>
             ))}
           </div>
+          
+          {/* Кнопки действий */}
+          <div className="features-actions">
+            <div className="hero-buttons">
+              <Link to="/subscription" className="btn btn-primary">
+                <span>Начать бесплатно</span>
+                <span className="btn-icon">🚀</span>  
+              </Link>
+              <Link to="/about" className="btn btn-outline">
+                <span>Узнать больше</span>
+                <span className="btn-icon">ℹ️</span>
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* CTA секция */}
-      <section className="cta">
+      {/* Информационная секция */}
+      <section className="info-section">
         <div className="container">
-          <div className="cta-content">
-            <div className="cta-text">
-              <h2 className="cta-title">
-                Готовы увеличить продажи на 
-                <span className="text-gradient-pink"> 300%</span>?
+          <div className="info-content">
+            <div className="section-header">
+              <h2 className="section-title">
+                Почему <span className="text-gradient">SellLab</span> — это ваш выбор?
               </h2>
-              <p className="cta-description">
-                Присоединяйтесь к тысячам успешных продавцов, которые уже используют SellLab 
-                для максимизации прибыли на Wildberries.
+              <p className="section-description">
+                Мы объединили многолетний опыт в e-commerce с современными технологиями
               </p>
             </div>
             
-            <div className="cta-action">
-              <Link to="/subscription" className="btn btn-cta">
-                <span>Начать сейчас</span>
-                <span className="btn-arrow">→</span>
-              </Link>
-              <p className="cta-note">
-                Бесплатный пробный период • Без обязательств • Отмена в любой момент
-              </p>
+            <div className="info-grid">
+              <div className="info-card">
+                <div className="info-icon">🎯</div>
+                <h3 className="info-title">Точность данных</h3>
+                <p className="info-description">
+                  Прямая интеграция с API Wildberries обеспечивает 100% точность 
+                  и актуальность всех аналитических данных.
+                </p>
+              </div>
+              
+              <div className="info-card">
+                <div className="info-icon">⚡</div>
+                <h3 className="info-title">Скорость работы</h3>
+                <p className="info-description">
+                  Обновление данных в реальном времени. Принимайте решения 
+                  на основе свежих данных каждую минуту.
+                </p>
+              </div>
+              
+              <div className="info-card">
+                <div className="info-icon">🛡️</div>
+                <h3 className="info-title">Безопасность</h3>
+                <p className="info-description">
+                  Ваши данные защищены современными методами шифрования 
+                  и хранятся на серверах с высоким уровнем безопасности.
+                </p>
+              </div>
+              
+              <div className="info-card">
+                <div className="info-icon">📈</div>
+                <h3 className="info-title">Результат</h3>
+                <p className="info-description">
+                  В среднем наши клиенты увеличивают прибыль на 40-60% 
+                  в первые 3 месяца использования платформы.
+                </p>
+              </div>
             </div>
           </div>
         </div>

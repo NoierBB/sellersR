@@ -1,6 +1,6 @@
 .analytics-page {
   flex: 1;
-  padding: var(--spacing-lg) 0;
+  padding: calc(80px + var(--spacing-lg)) 0 var(--spacing-lg);
   min-height: 100vh;
   background: var(--bg-primary);
   animation: fadeIn 0.6s ease-out;
@@ -211,7 +211,7 @@
   margin-bottom: 4px;
   font-weight: var(--font-weight-bold);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .metric-value {
@@ -221,6 +221,22 @@
   line-height: 1.2;
   font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
   letter-spacing: 0.5px;
+}
+
+/* Форматирование числовых значений */
+.formatted-number {
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.5px;
+}
+
+.currency-amount {
+  color: var(--color-primary-green);
+  font-weight: var(--font-weight-bold);
+}
+
+.percentage-amount {
+  font-weight: var(--font-weight-semibold);
 }
 
 .metric-footer {
@@ -943,10 +959,11 @@
 .table-container th,
 .table-container td {
   padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   text-align: left;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .table-container th:last-child,
@@ -961,11 +978,31 @@
   font-size: var(--font-size-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .table-container td {
   color: var(--text-secondary);
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+}
+
+/* Числовые значения с разделителями */
+.table-container .numeric-value {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.table-container .currency-value {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-green);
+}
+
+.table-container .percentage-value {
+  font-weight: var(--font-weight-medium);
 }
 
 .table-container tbody tr:hover {
@@ -1008,6 +1045,212 @@
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
+}
+
+.status-unknown {
+  color: var(--color-gray-400);
+  background: rgba(173, 181, 189, 0.1);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.status-completed {
+  color: var(--color-primary-purple);
+  background: rgba(159, 62, 213, 0.1);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.status-rejected {
+  color: var(--color-error);
+  background: rgba(255, 71, 87, 0.1);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Разделители блоков */
+.content-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  margin: var(--spacing-xl) 0;
+  position: relative;
+}
+
+.content-divider::before {
+  content: '---';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-primary);
+  padding: 0 var(--spacing-md);
+  color: var(--text-muted);
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+}
+
+/* Маркированные списки */
+.analytics-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--spacing-md) 0;
+}
+
+.analytics-list li {
+  position: relative;
+  padding-left: var(--spacing-lg);
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.analytics-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--color-primary-green);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+}
+
+/* Блоки с новостями/уведомлениями */
+.news-block {
+  background: var(--glass-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.news-date {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-normal);
+  margin-bottom: var(--spacing-xs);
+}
+
+.news-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.news-subtitle {
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* Индикаторы прогресса */
+.progress-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-sm);
+  transition: width var(--transition-normal);
+  position: relative;
+}
+
+.progress-fill.over-100 {
+  background: var(--color-primary-green);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 5px var(--color-primary-green); }
+  to { box-shadow: 0 0 15px var(--color-primary-green), 0 0 30px var(--color-primary-green); }
+}
+
+.progress-text {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  min-width: 60px;
+  text-align: right;
+}
+
+/* Интерактивные элементы - кнопки */
+.analytics-btn {
+  background: var(--glass-dark);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.analytics-btn:hover {
+  background: var(--gradient-primary);
+  border-color: var(--color-primary-green);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.analytics-btn.btn-primary {
+  background: var(--gradient-primary);
+  border-color: var(--color-primary-green);
+}
+
+.analytics-btn.btn-secondary {
+  background: var(--color-primary-purple);
+  border-color: var(--color-secondary-purple);
+}
+
+/* Выпадающие списки */
+.analytics-select {
+  background: var(--glass-dark);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  min-width: 120px;
+}
+
+.analytics-select:hover,
+.analytics-select:focus {
+  border-color: var(--color-primary-green);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(72, 221, 0, 0.2);
+}
+
+.analytics-select option {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: var(--spacing-sm);
 }
 
 .class-a {
@@ -1314,7 +1557,14 @@
 }
 
 .product-card:nth-child(1) { animation-delay: 0.6s; }
-.product-card:nth-child(2) { animation-delay: 0.7s; }
+.product-card:nth-child(2) { animation-delay: 0.7s; }  
 .product-card:nth-child(3) { animation-delay: 0.8s; }
 .product-card:nth-child(4) { animation-delay: 0.9s; }
 .product-card:nth-child(5) { animation-delay: 1.0s; }
+
+/* Мобильные отступы от навбара */
+@media (max-width: 768px) {
+  .analytics-page {
+    padding: calc(70px + var(--spacing-md)) 0 var(--spacing-md);
+  }
+}

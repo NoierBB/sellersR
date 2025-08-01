@@ -110,6 +110,10 @@
   --font-weight-bold: 700;
   --font-weight-extrabold: 800;
 
+  /* Стеклянные эффекты */
+  --glass-dark: rgba(0, 0, 55, 0.6);
+  --glass-light: rgba(255, 255, 255, 0.1);
+
   /* Z-индексы */
   --z-dropdown: 1000;
   --z-sticky: 1020;

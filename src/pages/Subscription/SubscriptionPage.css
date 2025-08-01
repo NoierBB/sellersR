@@ -1,6 +1,6 @@
 .subscription-page {
   flex: 1;
-  padding: var(--spacing-lg) 0;
+  padding: calc(80px + var(--spacing-lg)) 0 var(--spacing-lg);
   min-height: 100vh;
   background: var(--bg-primary);
   animation: fadeIn 0.6s ease-out;
@@ -715,5 +715,12 @@
   50% {
     transform: scale(1.05);
     opacity: 0.8;
+  }
+}
+
+/* Мобильные отступы от навбара */
+@media (max-width: 768px) {
+  .subscription-page {
+    padding: calc(70px + var(--spacing-md)) 0 var(--spacing-md);
   }
 }

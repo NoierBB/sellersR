@@ -13,12 +13,14 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   });
   const [verificationData, setVerificationData] = useState({
     code: '',
-    telegramBot: ''
+    telegramBot: '',
+    generatedCode: '' // Код, полученный от бекенда
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
   const [showVerification, setShowVerification] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // Сбрасываем состояние при открытии/закрытии модалки
   useEffect(() => {
@@ -32,7 +34,8 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       });
       setVerificationData({
         code: '',
-        telegramBot: ''
+        telegramBot: '',
+        generatedCode: ''
       });
       setErrors({});
       setSuccessMessage('');
@@ -150,9 +153,14 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
           // Регистрация успешна, показываем форму верификации
           setVerificationData(prev => ({
             ...prev,
-            telegramBot: response.data.telegramBot || '@SellersWilberis_bot'
+            telegramBot: response.data.telegramBot || '@SellersWilberis_bot',
+            generatedCode: response.data.verificationCode || ''
           }));
-          setSuccessMessage('Регистрация успешна! Проверьте Telegram для получения кода верификации.');
+          setSuccessMessage(
+            response.data.verificationCode 
+              ? `Код верификации: ${response.data.verificationCode}` 
+              : 'Регистрация успешна! Код верификации отправлен в Telegram.'
+          );
           setShowVerification(true);
           
           // Сохраняем токен и данные пользователя
@@ -169,13 +177,26 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
             _savedPassword: formData.password
           }));
           
-          setSuccessMessage('Вход выполнен успешно!');
-          
-          // Закрываем модалку и вызываем колбек успеха
-          setTimeout(() => {
-            onClose();
-            if (onSuccess) onSuccess(response.data);
-          }, 1000);
+          // Проверяем, нужна ли верификация
+          if (response.data.user && !response.data.user.verified && !response.data.user.isVerified) {
+            // Пользователь не верифицирован, показываем форму верификации
+            setVerificationData(prev => ({
+              ...prev,
+              telegramBot: response.data.telegramBot || '@SellersWilberis_bot',
+              generatedCode: response.data.verificationCode || ''
+            }));
+            setSuccessMessage('Вход выполнен! Для полного доступа требуется верификация.');
+            setShowVerification(true);
+          } else {
+            // Пользователь уже верифицирован
+            setSuccessMessage('Вход выполнен успешно!');
+            
+            // Закрываем модалку и вызываем колбек успеха
+            setTimeout(() => {
+              onClose();
+              if (onSuccess) onSuccess(response.data);
+            }, 1000);
+          }
         }
       } else {
         setErrors({ general: response.data.message || 'Произошла ошибка' });
@@ -229,6 +250,27 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
       onClose();
+    }
+  };
+
+  const copyCodeToClipboard = async () => {
+    if (verificationData.generatedCode) {
+      try {
+        await navigator.clipboard.writeText(verificationData.generatedCode);
+        setCodeCopied(true);
+        setTimeout(() => setCodeCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy code:', err);
+        // Fallback для старых браузеров
+        const textArea = document.createElement('textarea');
+        textArea.value = verificationData.generatedCode;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCodeCopied(true);
+        setTimeout(() => setCodeCopied(false), 2000);
+      }
     }
   };
 
@@ -431,7 +473,10 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
                 <div className="verification-icon">📱</div>
                 <h2 className="verification-title">Подтверждение регистрации</h2>
                 <p className="verification-subtitle">
-                  Мы отправили код верификации в Telegram бот
+                  {verificationData.generatedCode 
+                    ? 'Код верификации сгенерирован и отправлен в Telegram бот' 
+                    : 'Мы отправили код верификации в Telegram бот'
+                  }
                 </p>
               </div>
 
@@ -444,11 +489,31 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
                       <div className="bot-description">SellLab Verification Bot</div>
                     </div>
                   </div>
+                  
+                  {verificationData.generatedCode && (
+                    <div className="verification-code-display">
+                      <div className="code-label">Ваш код верификации:</div>
+                      <div className="code-container">
+                        <div className="code-value">{verificationData.generatedCode}</div>
+                        <button 
+                          className="copy-code-btn"
+                          onClick={copyCodeToClipboard}
+                          title="Копировать код"
+                        >
+                          {codeCopied ? '✅' : '📋'}
+                        </button>
+                      </div>
+                      <div className="code-note">
+                        {codeCopied ? 'Код скопирован!' : 'Этот код также отправлен в Telegram бот'}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="telegram-instructions">
                     <ol>
                       <li>Найдите бота <strong>{verificationData.telegramBot}</strong> в Telegram</li>
                       <li>Нажмите <strong>/start</strong> для начала работы</li>
-                      <li>Скопируйте полученный код и вставьте ниже</li>
+                      <li>Введите код {verificationData.generatedCode ? 'выше' : 'из Telegram'} в поле ниже</li>
                     </ol>
                   </div>
                 </div>

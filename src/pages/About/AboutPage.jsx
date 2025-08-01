@@ -3,6 +3,8 @@ import './AboutPage.css';
 
 const AboutPage = () => {
   const [activeFeature, setActiveFeature] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [visibleSections, setVisibleSections] = useState({});
   const [stats, setStats] = useState({
     users: 0,
     sales: 0,
@@ -65,38 +67,29 @@ const AboutPage = () => {
     }
   ];
 
-  const team = [
-    {
-      name: 'Алексей Петров',
-      role: 'CEO & Основатель',
-      description: 'Более 10 лет опыта в e-commerce и аналитике данных.',
-      avatar: '👨‍💼',
-      gradient: 'var(--gradient-primary)'
-    },
-    {
-      name: 'Мария Сидорова',
-      role: 'CTO',
-      description: 'Эксперт в области машинного обучения и больших данных.',
-      avatar: '👩‍💻',
-      gradient: 'var(--gradient-purple)'
-    },
-    {
-      name: 'Дмитрий Иванов',
-      role: 'Lead Developer',
-      description: 'Специалист по разработке высоконагруженных систем.',
-      avatar: '👨‍🔧',
-      gradient: 'var(--gradient-pink)'
-    },
-    {
-      name: 'Анна Козлова',
-      role: 'Head of Analytics',
-      description: 'Эксперт по маркетинговой аналитике и оптимизации.',
-      avatar: '👩‍📊',
-      gradient: 'var(--gradient-secondary)'
-    }
-  ];
+  // Команда удалена по требованию
 
   useEffect(() => {
+    // Создаем эффект загрузки страницы
+    const loadTimer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 300);
+
+    // Intersection Observer для анимации секций
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisibleSections(prev => ({
+              ...prev,
+              [entry.target.dataset.section]: true
+            }));
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '50px' }
+    );
+
     // Анимация счетчиков
     const targetStats = {
       users: 10247,
@@ -132,9 +125,17 @@ const AboutPage = () => {
       setActiveFeature((prev) => (prev + 1) % features.length);
     }, 4000);
 
+    // Наблюдаем за секциями после загрузки
+    setTimeout(() => {
+      const sections = document.querySelectorAll('[data-section]');
+      sections.forEach(section => observer.observe(section));
+    }, 100);
+
     return () => {
       clearInterval(timer);
       clearInterval(featureTimer);
+      clearTimeout(loadTimer);
+      observer.disconnect();
     };
   }, []);
 
@@ -149,9 +150,20 @@ const AboutPage = () => {
   };
 
   return (
-    <div className="about-page">
+    <div className={`about-page ${isLoaded ? 'page-loaded' : 'page-loading'}`}>
+      {/* Эффект загрузки */}
+      <div className="page-entrance-overlay">
+        <div className="entrance-particles">
+          {[...Array(20)].map((_, i) => (
+            <div key={i} className={`particle particle-${i + 1}`}>
+              {['✨', '🌟', '💫', '⭐', '🔥'][i % 5]}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Hero секция */}
-      <section className="hero">
+      <section className="hero" data-section="hero">
         <div className="hero-background">
           <div className="hero-gradient"></div>
           <div className="floating-elements">
@@ -164,7 +176,7 @@ const AboutPage = () => {
         </div>
         
         <div className="container">
-          <div className="hero-content">
+          <div className={`hero-content ${visibleSections.hero ? 'content-visible' : ''}`}>
             <div className="hero-text">
               <h1 className="hero-title">
                 О проекте <span className="text-gradient">SellLab</span>
@@ -244,9 +256,9 @@ const AboutPage = () => {
       </section>
 
       {/* Функции */}
-      <section className="features">
+      <section className="features" data-section="features">
         <div className="container">
-          <div className="section-header">
+          <div className={`section-header ${visibleSections.features ? 'header-visible' : ''}`}>
             <h2 className="section-title">
               Что делает <span className="text-gradient">SellLab</span> особенным?
             </h2>
@@ -298,37 +310,12 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* Команда */}
-      <section className="team">
-        <div className="container">
-          <div className="section-header">
-            <h2 className="section-title">Наша команда</h2>
-            <p className="section-description">
-              Эксперты с многолетним опытом в e-commerce и анализе данных
-            </p>
-          </div>
-          
-          <div className="team-grid">
-            {team.map((member, index) => (
-              <div key={index} className="team-card">
-                <div className="team-avatar" style={{ background: member.gradient }}>
-                  <span className="avatar-emoji">{member.avatar}</span>
-                </div>
-                <div className="team-info">
-                  <h3 className="team-name">{member.name}</h3>
-                  <div className="team-role">{member.role}</div>
-                  <p className="team-description">{member.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Секция команды удалена */}
 
       {/* Миссия */}
-      <section className="mission">
+      <section className="mission" data-section="mission">
         <div className="container">
-          <div className="mission-content">
+          <div className={`mission-content ${visibleSections.mission ? 'mission-visible' : ''}`}>
             <div className="mission-text">
               <h2 className="mission-title">
                 Наша <span className="text-gradient-pink">миссия</span>
@@ -381,9 +368,9 @@ const AboutPage = () => {
       </section>
 
       {/* CTA */}
-      <section className="cta">
+      <section className="cta" data-section="cta">
         <div className="container">
-          <div className="cta-content">
+          <div className={`cta-content ${visibleSections.cta ? 'cta-visible' : ''}`}>
             <h2 className="cta-title">
               Готовы присоединиться к <span className="text-gradient">SellLab</span>?
             </h2>

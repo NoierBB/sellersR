@@ -504,7 +504,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
                         </button>
                       </div>
                       <div className="code-note">
-                        {codeCopied ? 'Код скопирован!' : 'Этот код также отправлен в Telegram бот'}
+                        {codeCopied ? 'Код скопирован!' : 'Введите этот код в Telegram бот для верификации'}
                       </div>
                     </div>
                   )}
@@ -512,11 +512,12 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
                   <div className="telegram-instructions">
                     <ol>
                       <li>Скопируйте код верификации выше</li>
-                      <li>Найдите бота <strong>{verificationData.telegramBot}</strong> в Telegram и нажмите <strong>/start</strong></li>
-                      <li>Вставьте скопированный код в поле ниже для подтверждения</li>
+                      <li>Найдите бота <strong>{verificationData.telegramBot}</strong> в Telegram</li>
+                      <li>Отправьте скопированный код боту в сообщении</li>
+                      <li>После отправки кода боту введите тот же код в поле ниже</li>
                     </ol>
                     <div className="instruction-note">
-                      <strong>Важно:</strong> Код генерируется на нашем сайте. Просто введите его в поле ниже для верификации.
+                      <strong>Важно:</strong> Код генерируется только на нашем сайте. Бот НЕ присылает код - вы должны отправить код боту сами.
                     </div>
                   </div>
                 </div>
@@ -534,7 +535,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
                     value={verificationData.code}
                     onChange={handleVerificationChange}
                     className={`form-input verification-input ${errors.code ? 'form-input-error' : ''}`}
-                    placeholder="Введите код из Telegram"
+                    placeholder="Введите тот же код, что отправили боту"
                     disabled={loading}
                     maxLength="6"
                   />

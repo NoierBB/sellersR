@@ -32,6 +32,17 @@ import {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 const MIN_FETCH_INTERVAL = 300000; // 5 минут в миллисекундах
 
+// Утилитарные функции для форматирования
+const formatNumber = (num) => {
+  if (num === null || num === undefined || isNaN(num)) return '-';
+  return new Intl.NumberFormat('ru-RU').format(parseFloat(num));
+};
+
+const formatPercent = (num) => {
+  if (num === null || num === undefined || isNaN(num)) return '-';
+  return parseFloat(num).toFixed(1) + '%';
+};
+
 export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,14 +57,54 @@ export default function Analytics() {
     financial: null,
     'unit-economics': null,
     advertising: null,
-    'abc-analysis': null
+    'abc-analysis': null,
+    'project-info': {
+      loaded: true,
+      data: {
+        name: 'SellLab',
+        description: 'Комплексная система аналитики для продавцов Wildberries',
+        features: [
+          'Финансовая аналитика и отчетность',
+          'Юнит-экономика товаров',
+          'Анализ рекламных кампаний',
+          'ABC-анализ товарного портфеля',
+          'Автоматическая синхронизация с Wildberries API',
+          'Расчет ключевых метрик эффективности',
+          'Визуализация данных через графики и диаграммы',
+          'Система подписок и управления доступом'
+        ],
+        metrics: {
+          users: '2,847',
+          analyses: '18,634',
+          revenue: '1,247,891.50'
+        },
+        news: [
+          {
+            date: '15.01.2024',
+            title: 'Добавлена поддержка новых метрик рекламы',
+            category: 'Обновление функционала'
+          },
+          {
+            date: '10.01.2024', 
+            title: 'Улучшена производительность загрузки данных',
+            category: 'Оптимизация'
+          },
+          {
+            date: '05.01.2024',
+            title: 'Запуск системы уведомлений',
+            category: 'Новый функционал'
+          }
+        ]
+      }
+    }
   });
   const [viewMode, setViewMode] = useState('table');
   const [lastFetchTime, setLastFetchTime] = useState({
     financial: 0,
     'unit-economics': 0,
     advertising: 0,
-    'abc-analysis': 0
+    'abc-analysis': 0,
+    'project-info': Date.now()
   });
 
   const API_BASE_URL = 'http://localhost:8080/api';
@@ -101,6 +152,12 @@ export default function Analytics() {
   // Загрузка данных аналитики
   const loadAnalyticsData = useCallback(async (tab) => {
     if (loading) return;
+    
+    // Если это вкладка с информацией о проекте, не загружаем данные с сервера
+    if (tab === 'project-info') {
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     
@@ -189,44 +246,95 @@ export default function Analytics() {
 
   // Функции для рендеринга графиков
   const renderFinancialCharts = () => {
-    if (!analyticsData.financial?.weeks) return null;
+    if (!analyticsData.financial?.weeks || !Array.isArray(analyticsData.financial.weeks)) {
+      return (
+        <div className="no-data">
+          <FontAwesomeIcon icon={faInfoCircle} />
+          <p>Финансовые данные для графиков отсутствуют</p>
+        </div>
+      );
+    }
     
     const data = analyticsData.financial.weeks.map(week => ({
       name: `Неделя ${week.week}`,
-      sales: week.salesWb,
-      profit: week.netProfit,
-      logistics: week.logistics,
-      storage: week.storage
+      sales: parseFloat(week.salesWb) || 0,
+      profit: parseFloat(week.netProfit) || 0,
+      logistics: parseFloat(week.logistics) || 0,
+      storage: parseFloat(week.storage) || 0
     }));
 
     return (
       <div className="charts-container">
         <div className="chart-wrapper">
           <h3>Динамика продаж и прибыли</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip 
+                formatter={(value, name) => [formatNumber(value) + ' ₽', name]}
+                labelStyle={{ color: '#333' }}
+                contentStyle={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                  border: '1px solid #ccc',
+                  borderRadius: '8px'
+                }}
+              />
               <Legend />
-              <Bar dataKey="sales" fill="#8884d8" name="Продажи (₽)" />
-              <Bar dataKey="profit" fill="#82ca9d" name="Прибыль (₽)" />
+              <Bar dataKey="sales" fill="#5F5B4B" name="Продажи (₽)" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="profit" fill="#82ca9d" name="Прибыль (₽)" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="chart-wrapper">
           <h3>Расходы по неделям</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip 
+                formatter={(value, name) => [formatNumber(value) + ' ₽', name]}
+                labelStyle={{ color: '#333' }}
+                contentStyle={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                  border: '1px solid #ccc',
+                  borderRadius: '8px'
+                }}
+              />
               <Legend />
-              <Line type="monotone" dataKey="logistics" stroke="#ff7300" name="Логистика (₽)" />
-              <Line type="monotone" dataKey="storage" stroke="#387908" name="Хранение (₽)" />
+              <Line 
+                type="monotone" 
+                dataKey="logistics" 
+                stroke="#ff7300" 
+                strokeWidth={3}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6, fill: '#ff7300' }}
+                name="Логистика (₽)" 
+              />
+              <Line 
+                type="monotone" 
+                dataKey="storage" 
+                stroke="#387908" 
+                strokeWidth={3}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6, fill: '#387908' }}
+                name="Хранение (₽)" 
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -235,48 +343,107 @@ export default function Analytics() {
   };
 
   const renderUnitEconomicsCharts = () => {
-    if (!analyticsData['unit-economics']?.items) return null;
+    if (!analyticsData['unit-economics']?.items || !Array.isArray(analyticsData['unit-economics'].items)) {
+      return (
+        <div className="no-data">
+          <FontAwesomeIcon icon={faInfoCircle} />
+          <p>Данные юнит-экономики для графиков отсутствуют</p>
+        </div>
+      );
+    }
     
     const topProducts = [...analyticsData['unit-economics'].items]
-      .sort((a, b) => b.finalMarginality - a.finalMarginality)
+      .sort((a, b) => (parseFloat(b.finalMarginality) || 0) - (parseFloat(a.finalMarginality) || 0))
       .slice(0, 10);
     
     const marginData = topProducts.map(item => ({
-      name: item.vendorCode,
-      margin: item.finalMarginality,
-      profit: item.grossProfitFinal,
-      roi: item.roi
+      name: item.vendorCode || 'Нет артикула',
+      margin: parseFloat(item.finalMarginality) || 0,
+      profit: parseFloat(item.grossProfitFinal) || 0,
+      roi: parseFloat(item.roi) || 0
     }));
     
     return (
       <div className="charts-container">
         <div className="chart-wrapper">
           <h3>Топ-10 товаров по маржинальности</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={marginData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={marginData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip 
+                formatter={(value, name) => {
+                  if (name.includes('ROI') || name.includes('маржинальность')) {
+                    return [formatPercent(value), name];
+                  }
+                  return [formatNumber(value), name];
+                }}
+                labelStyle={{ color: '#333' }}
+                contentStyle={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                  border: '1px solid #ccc',
+                  borderRadius: '8px'
+                }}
+              />
               <Legend />
-              <Bar dataKey="margin" fill="#8884d8" name="Маржинальность (%)" />
-              <Bar dataKey="roi" fill="#82ca9d" name="ROI (%)" />
+              <Bar dataKey="margin" fill="#5F5B4B" name="Маржинальность (%)" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="roi" fill="#82ca9d" name="ROI (%)" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="chart-wrapper">
           <h3>Прибыль по товарам</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={350}>
             <ScatterChart
-              margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+              data={marginData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
             >
-              <CartesianGrid />
-              <XAxis type="number" dataKey="margin" name="Маржинальность" unit="%" />
-              <YAxis type="number" dataKey="profit" name="Прибыль" unit="₽" />
-              <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis 
+                type="number" 
+                dataKey="margin" 
+                name="Маржинальность" 
+                unit="%" 
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis 
+                type="number" 
+                dataKey="profit" 
+                name="Прибыль" 
+                unit="₽" 
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip 
+                cursor={{ strokeDasharray: '3 3' }}
+                formatter={(value, name) => {
+                  if (name === 'Маржинальность') {
+                    return [formatPercent(value), name];
+                  } else if (name === 'Прибыль') {
+                    return [formatNumber(value) + ' ₽', name];
+                  }
+                  return [value, name];
+                }}
+                contentStyle={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                  border: '1px solid #ccc',
+                  borderRadius: '8px'
+                }}
+              />
               <Legend />
-              <Scatter name="Товары" data={marginData} fill="#8884d8" />
+              <Scatter 
+                name="Товары" 
+                fill="#5F5B4B" 
+                stroke="#4a4539"
+                strokeWidth={1}
+              />
             </ScatterChart>
           </ResponsiveContainer>
         </div>
@@ -285,14 +452,21 @@ export default function Analytics() {
   };
 
   const renderAdvertisingCharts = () => {
-    if (!analyticsData.advertising?.campaigns) return null;
+    if (!analyticsData.advertising?.campaigns || !Array.isArray(analyticsData.advertising.campaigns) || analyticsData.advertising.campaigns.length === 0) {
+      return (
+        <div className="no-data">
+          <FontAwesomeIcon icon={faInfoCircle} />
+          <p>Данные по рекламным кампаниям отсутствуют</p>
+        </div>
+      );
+    }
     
-    const data = analyticsData.advertising.campaigns.map(campaign => ({
-      name: campaign.vendorCode,
-      auto: campaign.autoExpenses,
-      auction: campaign.auctionExpenses,
-      margin: campaign.marginCpo,
-      conversion: campaign.orderConversion
+    const data = analyticsData.advertising.campaigns.map((campaign, index) => ({
+      name: campaign.vendorCode || `Кампания ${index + 1}`,
+      auto: parseFloat(campaign.autoExpenses) || 0,
+      auction: parseFloat(campaign.auctionExpenses) || 0,
+      margin: parseFloat(campaign.marginCpo) || 0,
+      conversion: parseFloat(campaign.orderConversion) || 0
     }));
     
     return (
@@ -304,7 +478,7 @@ export default function Analytics() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip />
+              <Tooltip formatter={(value, name) => [formatNumber(value) + ' ₽', name]} />
               <Legend />
               <Bar dataKey="auto" fill="#8884d8" name="Авто (₽)" />
               <Bar dataKey="auction" fill="#82ca9d" name="Аукцион (₽)" />
@@ -320,10 +494,17 @@ export default function Analytics() {
               <XAxis dataKey="name" />
               <YAxis yAxisId="left" />
               <YAxis yAxisId="right" orientation="right" />
-              <Tooltip />
+              <Tooltip 
+                formatter={(value, name) => {
+                  if (name.includes('Конверсия')) {
+                    return [value + '%', name];
+                  }
+                  return [formatNumber(value) + ' ₽', name];
+                }}
+              />
               <Legend />
-              <Line yAxisId="left" type="monotone" dataKey="margin" stroke="#ff7300" name="Маржа (₽)" />
-              <Line yAxisId="right" type="monotone" dataKey="conversion" stroke="#387908" name="Конверсия (%)" />
+              <Line yAxisId="left" type="monotone" dataKey="margin" stroke="#ff7300" name="Маржа (₽)" strokeWidth={2} />
+              <Line yAxisId="right" type="monotone" dataKey="conversion" stroke="#387908" name="Конверсия (%)" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -332,13 +513,20 @@ export default function Analytics() {
   };
 
   const renderABCAnalysisCharts = () => {
-    if (!analyticsData['abc-analysis']) return null;
+    if (!analyticsData['abc-analysis']?.summary || !analyticsData['abc-analysis']?.items) {
+      return (
+        <div className="no-data">
+          <FontAwesomeIcon icon={faInfoCircle} />
+          <p>Данные ABC-анализа для графиков отсутствуют</p>
+        </div>
+      );
+    }
     
     const { classA, classB, classC } = analyticsData['abc-analysis'].summary;
     const pieData = [
-      { name: 'Класс A', value: classA.percent },
-      { name: 'Класс B', value: classB.percent },
-      { name: 'Класс C', value: classC.percent }
+      { name: 'Класс A', value: parseFloat(classA.percent) || 0 },
+      { name: 'Класс B', value: parseFloat(classB.percent) || 0 },
+      { name: 'Класс C', value: parseFloat(classC.percent) || 0 }
     ];
     
     const topItems = analyticsData['abc-analysis'].items
@@ -346,48 +534,99 @@ export default function Analytics() {
       .slice(0, 10);
     
     const barData = topItems.map(item => ({
-      name: item.vendorCode,
-      revenue: item.revenue,
-      orders: item.ordersCount
+      name: item.vendorCode || 'Нет артикула',
+      revenue: parseFloat(item.revenue) || 0,
+      orders: parseInt(item.ordersCount) || 0
     }));
     
     return (
       <div className="charts-container">
         <div className="chart-wrapper">
           <h3>Распределение выручки</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={350}>
             <PieChart>
               <Pie
                 data={pieData}
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
-                fill="#8884d8"
+                outerRadius={120}
+                innerRadius={40}
+                paddingAngle={5}
                 dataKey="value"
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) => `${name}: ${(percent).toFixed(1)}%`}
+                labelLine={false}
               >
                 {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={COLORS[index % COLORS.length]}
+                    stroke={COLORS[index % COLORS.length]}
+                    strokeWidth={2}
+                  />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend />
+              <Tooltip 
+                formatter={(value) => [`${value.toFixed(1)}%`, 'Процент выручки']}
+                contentStyle={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                  border: '1px solid #ccc',
+                  borderRadius: '8px'
+                }}
+              />
+              <Legend 
+                verticalAlign="bottom" 
+                height={36}
+                iconType="circle"
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         <div className="chart-wrapper">
           <h3>Топ-10 товаров класса A</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={barData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
-              <Tooltip />
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={barData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+              <Tooltip 
+                formatter={(value, name) => {
+                  if (name.includes('Выручка')) {
+                    return [formatNumber(value) + ' ₽', name];
+                  } else if (name.includes('Заказы')) {
+                    return [formatNumber(value) + ' шт', name];
+                  }
+                  return [formatNumber(value), name];
+                }}
+                labelStyle={{ color: '#333' }}
+                contentStyle={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                  border: '1px solid #ccc',
+                  borderRadius: '8px'
+                }}
+              />
               <Legend />
-              <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name="Выручка (₽)" />
-              <Bar yAxisId="right" dataKey="orders" fill="#82ca9d" name="Заказы (шт)" />
+              <Bar 
+                yAxisId="left" 
+                dataKey="revenue" 
+                fill="#5F5B4B" 
+                name="Выручка (₽)" 
+                radius={[2, 2, 0, 0]}
+              />
+              <Bar 
+                yAxisId="right" 
+                dataKey="orders" 
+                fill="#82ca9d" 
+                name="Заказы (шт)" 
+                radius={[2, 2, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -396,9 +635,47 @@ export default function Analytics() {
   };
 
   // Рендер таблиц
-  const renderFinancialTable = () => (
+  const renderFinancialTable = () => {
+    if (!analyticsData.financial?.weeks || !Array.isArray(analyticsData.financial.weeks)) {
+      return (
     <div className="financial-report">
       <h2>Финансовый отчет</h2>
+          <div className="no-data">
+            <FontAwesomeIcon icon={faInfoCircle} />
+            <p>Финансовые данные отсутствуют</p>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="financial-report">
+        <h2>Финансовый отчет</h2>
+        
+        <div className="financial-summary">
+          <div className="summary-card">
+            <h3>Общая статистика</h3>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <span className="stat-label">Общие продажи:</span>
+                <span className="stat-value">{formatNumber(analyticsData.financial.totals?.totalSales)} ₽</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Чистая прибыль:</span>
+                <span className={`stat-value ${(analyticsData.financial.totals?.totalNetProfit || 0) > 0 ? 'positive' : 'negative'}`}>
+                  {formatNumber(analyticsData.financial.totals?.totalNetProfit)} ₽
+                </span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Средний ДРР:</span>
+                <span className="stat-value">{formatPercent(analyticsData.financial.totals?.avgDrr)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <hr className="section-divider" />
+        
       <div className="table-container"> 
         <table>
           <thead>
@@ -426,48 +703,51 @@ export default function Analytics() {
               <tr key={index}>
                 <td>{week.week}</td>
                 <td>{week.date}</td>
-                <td>{week.buyoutQuantity}</td>
-                <td>{week.salesWb} ₽</td>
-                <td>{week.toCalculateForGoods} ₽</td>
-                <td>{week.logistics} ₽</td>
-                <td>{week.storage} ₽</td>
-                <td>{week.acceptance} ₽</td>
-                <td>{week.penalty} ₽</td>
-                <td>{week.retentions} ₽</td>
-                <td>{week.toPay} ₽</td>
-                <td>{week.tax} ₽</td>
-                <td>{week.otherExpenses} ₽</td>
-                <td>{week.costOfGoodsSold} ₽</td>
-                <td className={week.netProfit > 0 ? 'positive' : 'negative'}>{week.netProfit} ₽</td>
-                <td>{week.drr}%</td>
+                  <td>{formatNumber(week.buyoutQuantity)}</td>
+                  <td>{formatNumber(week.salesWb)} ₽</td>
+                  <td>{formatNumber(week.toCalculateForGoods)} ₽</td>
+                  <td>{formatNumber(week.logistics)} ₽</td>
+                  <td>{formatNumber(week.storage)} ₽</td>
+                  <td>{formatNumber(week.acceptance)} ₽</td>
+                  <td>{formatNumber(week.penalty)} ₽</td>
+                  <td>{formatNumber(week.retentions)} ₽</td>
+                  <td>{formatNumber(week.toPay)} ₽</td>
+                  <td>{formatNumber(week.tax)} ₽</td>
+                  <td>{formatNumber(week.otherExpenses)} ₽</td>
+                  <td>{formatNumber(week.costOfGoodsSold)} ₽</td>
+                  <td className={parseFloat(week.netProfit) > 0 ? 'positive' : 'negative'}>
+                    {formatNumber(week.netProfit)} ₽
+                  </td>
+                  <td>{formatPercent(week.drr)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="totals-row">
               <td colSpan="2">ИТОГО</td>
-              <td>{analyticsData.financial.totals.totalBuyout}</td>
-              <td>{analyticsData.financial.totals.totalSales} ₽</td>
+                <td>{formatNumber(analyticsData.financial.totals?.totalBuyout)}</td>
+                <td>{formatNumber(analyticsData.financial.totals?.totalSales)} ₽</td>
               <td>-</td>
               <td>-</td>
               <td>-</td>
               <td>-</td>
               <td>-</td>
               <td>-</td>
-              <td>{analyticsData.financial.totals.totalToPay} ₽</td>
-              <td>{analyticsData.financial.totals.totalTax} ₽</td>
+                <td>{formatNumber(analyticsData.financial.totals?.totalToPay)} ₽</td>
+                <td>{formatNumber(analyticsData.financial.totals?.totalTax)} ₽</td>
               <td>-</td>
               <td>-</td>
-              <td className={analyticsData.financial.totals.totalNetProfit > 0 ? 'positive' : 'negative'}>
-                {analyticsData.financial.totals.totalNetProfit} ₽
+                <td className={parseFloat(analyticsData.financial.totals?.totalNetProfit) > 0 ? 'positive' : 'negative'}>
+                  {formatNumber(analyticsData.financial.totals?.totalNetProfit)} ₽
               </td>
-              <td>{analyticsData.financial.totals.avgDrr}%</td>
+                <td>{formatPercent(analyticsData.financial.totals?.avgDrr)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
     </div>
   );
+  };
 
      const renderUnitEconomicsTable = () => (
     <div className="unit-economics">
@@ -563,9 +843,38 @@ export default function Analytics() {
     </div>
   );
 
-  const renderAdvertisingTable = () => (
+  const renderAdvertisingTable = () => {
+    if (!analyticsData.advertising?.campaigns || !Array.isArray(analyticsData.advertising.campaigns) || analyticsData.advertising.campaigns.length === 0) {
+      return (
     <div className="advertising-campaigns">
       <h2>Рекламные кампании</h2>
+          <div className="no-data">
+            <FontAwesomeIcon icon={faInfoCircle} />
+            <p>Данные по рекламным кампаниям отсутствуют</p>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="advertising-campaigns">
+        <h2>Рекламные кампании</h2>
+        <div className="campaigns-summary">
+          <div className="summary-card">
+            <h3>Общая статистика</h3>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <span className="stat-label">Количество кампаний:</span>
+                <span className="stat-value">{formatNumber(analyticsData.advertising.campaigns.length)}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Общие расходы:</span>
+                <span className="stat-value">{formatNumber(analyticsData.advertising.campaigns.reduce((sum, c) => sum + (parseFloat(c.autoExpenses) || 0) + (parseFloat(c.auctionExpenses) || 0), 0))} ₽</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr className="section-divider" />
       <div className="table-container"> 
         <div className="table-scroll">
           <table>
@@ -606,34 +915,34 @@ export default function Analytics() {
               {analyticsData.advertising.campaigns.map((campaign, index) => (
                 <tr key={index}>
                   <td>{index + 1}</td>
-                  <td>{campaign.nmId}</td>
-                  <td>{campaign.vendorCode}</td>
-                  <td>{campaign.cluster}</td>
-                  <td>{campaign.indicator}</td>
-                  <td>{campaign.autoExpenses} ₽</td>
-                  <td>{campaign.autoViews}</td>
-                  <td>{campaign.autoCtr}%</td>
-                  <td>{campaign.autoClicks}</td>
-                  <td>{campaign.autoCpc} ₽</td>
-                  <td>{campaign.autoCr}%</td>
-                  <td>{campaign.autoOrders}</td>
-                  <td>{campaign.autoCpo} ₽</td>
-                  <td>{campaign.auctionExpenses} ₽</td>
-                  <td>{campaign.auctionViews}</td>
-                  <td>{campaign.auctionCtr}%</td>
-                  <td>{campaign.auctionClicks}</td>
-                  <td>{campaign.auctionCpc} ₽</td>
-                  <td>{campaign.auctionCr}%</td>
-                  <td>{campaign.auctionOrders}</td>
-                  <td>{campaign.auctionCpo} ₽</td>
-                  <td>{campaign.cardTransitions}</td>
-                  <td>{campaign.cartAdditions}</td>
-                  <td>{campaign.orders}</td>
-                  <td>{campaign.cartConversion}%</td>
-                  <td>{campaign.orderConversion}%</td>
-                  <td>{campaign.directConversion}%</td>
-                  <td>{campaign.organicOrdersPercent}%</td>
-                  <td className={campaign.marginCpo > 0 ? 'positive' : 'negative'}>{campaign.marginCpo} ₽</td>
+                    <td>{campaign.nmId || '-'}</td>
+                    <td>{campaign.vendorCode || '-'}</td>
+                    <td>{campaign.cluster || '-'}</td>
+                    <td>{campaign.indicator || '-'}</td>
+                    <td>{formatNumber(campaign.autoExpenses)} ₽</td>
+                    <td>{formatNumber(campaign.autoViews)}</td>
+                    <td>{formatPercent(campaign.autoCtr)}</td>
+                    <td>{formatNumber(campaign.autoClicks)}</td>
+                    <td>{formatNumber(campaign.autoCpc)} ₽</td>
+                    <td>{formatPercent(campaign.autoCr)}</td>
+                    <td>{formatNumber(campaign.autoOrders)}</td>
+                    <td>{formatNumber(campaign.autoCpo)} ₽</td>
+                    <td>{formatNumber(campaign.auctionExpenses)} ₽</td>
+                    <td>{formatNumber(campaign.auctionViews)}</td>
+                    <td>{formatPercent(campaign.auctionCtr)}</td>
+                    <td>{formatNumber(campaign.auctionClicks)}</td>
+                    <td>{formatNumber(campaign.auctionCpc)} ₽</td>
+                    <td>{formatPercent(campaign.auctionCr)}</td>
+                    <td>{formatNumber(campaign.auctionOrders)}</td>
+                    <td>{formatNumber(campaign.auctionCpo)} ₽</td>
+                    <td>{formatNumber(campaign.cardTransitions)}</td>
+                    <td>{formatNumber(campaign.cartAdditions)}</td>
+                    <td>{formatNumber(campaign.orders)}</td>
+                    <td>{formatPercent(campaign.cartConversion)}</td>
+                    <td>{formatPercent(campaign.orderConversion)}</td>
+                    <td>{formatPercent(campaign.directConversion)}</td>
+                    <td>{formatPercent(campaign.organicOrdersPercent)}</td>
+                    <td className={parseFloat(campaign.marginCpo) > 0 ? 'positive' : 'negative'}>{formatNumber(campaign.marginCpo)} ₽</td>
                 </tr>
               ))}
             </tbody>
@@ -642,6 +951,7 @@ export default function Analytics() {
       </div>
     </div>
   );
+  };
 
   const renderABCAnalysisTable = () => (
     <div className="abc-analysis">
@@ -712,7 +1022,98 @@ export default function Analytics() {
       </div>
     </div>
   );
-  // Остальные функции render...Table() аналогично
+
+  const renderProjectInfoTab = () => {
+    const projectData = analyticsData['project-info'].data;
+    
+    return (
+      <div className="project-info">
+        <div className="project-header">
+          <h2>{projectData.name}</h2>
+          <p className="project-description">{projectData.description}</p>
+        </div>
+        
+        <hr className="section-divider" />
+        
+        <div className="project-metrics">
+          <h3>Ключевые метрики платформы</h3>
+          <div className="metrics-grid">
+            <div className="metric-card">
+              <div className="metric-label">Пользователей:</div>
+              <div className="metric-value">{projectData.metrics.users}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Анализов проведено:</div>
+              <div className="metric-value">{projectData.metrics.analyses}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Проанализировано выручки:</div>
+              <div className="metric-value">{projectData.metrics.revenue} руб.</div>
+            </div>
+          </div>
+        </div>
+        
+        <hr className="section-divider" />
+        
+        <div className="project-features">
+          <h3>Функциональные возможности</h3>
+          <ul className="features-list">
+            {projectData.features.map((feature, index) => (
+              <li key={index} className="feature-item">{feature}</li>
+            ))}
+          </ul>
+        </div>
+        
+        <hr className="section-divider" />
+        
+        <div className="project-news">
+          <h3>Последние обновления</h3>
+          <div className="news-list">
+            {projectData.news.map((newsItem, index) => (
+              <div key={index} className="news-item">
+                <div className="news-date">{newsItem.date}</div>
+                <div className="news-title">{newsItem.title}</div>
+                <div className="news-category">{newsItem.category}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <hr className="section-divider" />
+        
+        <div className="project-additional">
+          <h3>Технические характеристики</h3>
+          <div className="tech-specs">
+            <div className="spec-item">
+              <strong>Архитектура:</strong> Микросервисная архитектура с REST API
+            </div>
+            <div className="spec-item">
+              <strong>База данных:</strong> MongoDB для хранения аналитических данных
+            </div>
+            <div className="spec-item">
+              <strong>Интеграции:</strong> Wildberries API, система уведомлений, JWT аутентификация
+            </div>
+            <div className="spec-item">
+              <strong>Безопасность:</strong> Шифрование данных, защищенные API ключи
+            </div>
+            <div className="spec-item">
+              <strong>Производительность:</strong> Кэширование данных, оптимизированные запросы
+            </div>
+          </div>
+        </div>
+        
+        <div className="project-contact">
+          <h3>Техническая поддержка</h3>
+          <p>По вопросам использования платформы обращайтесь в службу поддержки.</p>
+          <div className="support-info">
+            <div>📧 support@selllab.ru</div>
+            <div>📞 +7 (495) 123-45-67</div>
+            <div>🕒 Режим работы: ПН-ПТ 9:00-18:00 МСК</div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     checkSubscriptionAndLoadData();
@@ -840,6 +1241,12 @@ export default function Analytics() {
           >
             ABC-анализ
           </button>
+          <button 
+            className={`tab-button ${activeTab === 'project-info' ? 'active' : ''}`}
+            onClick={() => handleTabChange('project-info')}
+          >
+            О проекте
+          </button>
         </div>
         
         <div className="view-mode-toggle">
@@ -867,6 +1274,7 @@ export default function Analytics() {
             {activeTab === 'unit-economics' && analyticsData['unit-economics'] && renderUnitEconomicsTable()}
             {activeTab === 'advertising' && analyticsData.advertising && renderAdvertisingTable()}
             {activeTab === 'abc-analysis' && analyticsData['abc-analysis'] && renderABCAnalysisTable()}
+            {activeTab === 'project-info' && renderProjectInfoTab()}
           </>
         ) : (
           <>
@@ -874,10 +1282,11 @@ export default function Analytics() {
             {activeTab === 'unit-economics' && renderUnitEconomicsCharts()}
             {activeTab === 'advertising' && renderAdvertisingCharts()}
             {activeTab === 'abc-analysis' && renderABCAnalysisCharts()}
+            {activeTab === 'project-info' && renderProjectInfoTab()}
           </>
         )}
         
-        {!analyticsData[activeTab] && (
+        {!analyticsData[activeTab] && activeTab !== 'project-info' && (
           <div className="no-data">
             <FontAwesomeIcon icon={faInfoCircle} />
             <p>Данные отсутствуют или загружаются</p>

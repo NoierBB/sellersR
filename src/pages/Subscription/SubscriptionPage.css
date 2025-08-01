@@ -175,6 +175,26 @@
   background: var(--gradient-primary);
 }
 
+/* Специальные стили для бесплатного плана */
+.plan-card-free {
+  border: 2px solid var(--color-success);
+  background: linear-gradient(135deg, rgba(72, 221, 0, 0.05), rgba(82, 165, 41, 0.05));
+  position: relative;
+  transform: scale(1.02);
+  box-shadow: 0 8px 32px rgba(72, 221, 0, 0.2);
+}
+
+.plan-card-free::before {
+  opacity: 1;
+  background: var(--gradient-primary);
+  height: 4px;
+}
+
+.plan-card-free:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(72, 221, 0, 0.3);
+}
+
 /* Значки планов */
 .plan-badge,
 .plan-current-badge {
@@ -195,6 +215,13 @@
 
 .plan-current-badge {
   background: var(--gradient-primary);
+}
+
+.plan-badge-free {
+  background: var(--gradient-primary);
+  color: var(--color-white);
+  font-weight: var(--font-weight-bold);
+  animation: pulse 2s infinite;
 }
 
 /* Заголовок плана */
@@ -284,6 +311,18 @@
   font-size: var(--font-size-sm);
   color: var(--text-muted);
   font-style: italic;
+}
+
+.price-free {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-success);
+  background: linear-gradient(135deg, #48DD00, #52A529);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 /* Функции плана */
@@ -394,6 +433,22 @@
   color: var(--text-secondary);
   border: 1px solid rgba(255, 255, 255, 0.2);
   cursor: default;
+}
+
+.btn-free {
+  background: var(--gradient-primary);
+  color: var(--color-white);
+  box-shadow: 0 4px 20px rgba(72, 221, 0, 0.3);
+  border: 2px solid var(--color-success);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-free:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(72, 221, 0, 0.4);
+  background: linear-gradient(135deg, #52A529, #48DD00);
 }
 
 .btn-danger {
@@ -650,3 +705,15 @@
 .faq-item:nth-child(2) { animation-delay: 0.7s; }
 .faq-item:nth-child(3) { animation-delay: 0.8s; }
 .faq-item:nth-child(4) { animation-delay: 0.9s; }
+
+/* Дополнительные анимации */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}

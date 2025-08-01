@@ -5,118 +5,240 @@ import './SubscriptionPage.css';
 const SubscriptionPage = () => {
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
+  const [availablePlans, setAvailablePlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
 
-  const plans = [
-    {
-      id: 'PLAN_30_DAYS',
-      name: 'Стартер',
-      duration: '30 дней',
-      price: 1490,
-      originalPrice: 2990,
-      discount: 50,
-      features: [
-        'Базовая аналитика продаж',
-        'Отчеты по 5 товарам',
-        'Ежедневные обновления данных',
-        'Email поддержка',
-        'Экспорт в Excel'
-      ],
-      popular: false,
-      color: 'var(--color-secondary-green)',
-      gradient: 'var(--gradient-secondary)'
-    },
-    {
-      id: 'PLAN_60_DAYS',
-      name: 'Профи',
-      duration: '60 дней',
-      price: 2390,
-      originalPrice: 5980,
-      discount: 60,
-      features: [
-        'Полная аналитика продаж',
-        'Отчеты по 50 товарам',
-        'Обновления в реальном времени',
-        'Приоритетная поддержка',
-        'Экспорт в Excel и PDF',
-        'Автоматизация рекламы',
-        'Анализ конкурентов'
-      ],
-      popular: true,
-      color: 'var(--color-primary-purple)',
-      gradient: 'var(--gradient-purple)'
-    },
-    {
-      id: 'PLAN_90_DAYS',
-      name: 'Эксперт',
-      duration: '90 дней',
-      price: 2990,
-      originalPrice: 8970,
-      discount: 67,
-      features: [
-        'Премиум аналитика продаж',
-        'Неограниченное количество товаров',
-        'Обновления в реальном времени',
-        'Персональный менеджер',
-        'Все форматы экспорта',
-        'Полная автоматизация рекламы',
-        'Глубокий анализ конкурентов',
-        'API доступ',
-        'Индивидуальные отчеты'
-      ],
-      popular: false,
-      color: 'var(--color-primary-pink)',
-      gradient: 'var(--gradient-pink)'
-    }
-  ];
-
   useEffect(() => {
-    fetchSubscriptionInfo();
+    fetchData();
   }, []);
 
-  const fetchSubscriptionInfo = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Получаем информацию о пользователе
-      const userResponse = await axios.get('/api/auth/user-info');
-      if (userResponse.data.success) {
-        setUser(userResponse.data.user);
-      }
-      
-      // Получаем информацию о подписке
-      const subResponse = await axios.get('/api/subscription/info');
-      if (subResponse.data.success && subResponse.data.subscription) {
-        setSubscription(subResponse.data.subscription);
-      }
+      await Promise.all([
+        fetchUserInfo(),
+        fetchSubscriptionInfo(),
+        fetchAvailablePlans()
+      ]);
     } catch (error) {
-      console.error('Error fetching subscription info:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await axios.get('/api/auth/user-info');
+      if (response.data.success) {
+        setUser(response.data.user);
+      }
+    } catch (error) {
+      console.error('Error fetching user info:', error);
+    }
+  };
+
+  const fetchSubscriptionInfo = async () => {
+    try {
+      const response = await axios.get('/api/subscription/info');
+      if (response.data.success && response.data.subscription) {
+        setSubscription(response.data.subscription);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription info:', error);
+    }
+  };
+
+  const fetchAvailablePlans = async () => {
+    try {
+      const response = await axios.get('/api/subscription/plans');
+      console.log('Plans API response:', response.data);
+      
+      if (response.data.success && response.data.plans) {
+        // Преобразуем планы от бекенда в нужный формат
+        const formattedPlans = response.data.plans.map(plan => ({
+          id: plan.planType,
+          name: plan.displayName,
+          duration: `${plan.days} ${plan.days === 1 ? 'день' : plan.days < 5 ? 'дня' : 'дней'}`,
+          price: plan.price,
+          originalPrice: null, // Можно добавить логику для originalPrice
+          discount: null,
+          features: plan.features || getDefaultFeatures(plan.planType),
+          popular: plan.planType === 'PLAN_30_DAYS', // Делаем популярным план на 30 дней
+          color: getPlanColor(plan.planType),
+          gradient: getPlanGradient(plan.planType),
+          isFree: plan.price === 0
+        }));
+
+        // Сортируем планы: бесплатный первый, потом по цене
+        formattedPlans.sort((a, b) => {
+          if (a.isFree && !b.isFree) return -1;
+          if (!a.isFree && b.isFree) return 1;
+          return a.price - b.price;
+        });
+
+        setAvailablePlans(formattedPlans);
+      }
+    } catch (error) {
+      console.error('Error fetching available plans:', error);
+      // Fallback планы на случай ошибки API
+      setAvailablePlans(getFallbackPlans());
+    }
+  };
+
+  const getDefaultFeatures = (planType) => {
+    switch (planType) {
+      case 'PLAN_FREE':
+        return [
+          'Базовая аналитика',
+          'Тестовый доступ',
+          '7 дней бесплатно',
+          'Ознакомление с функционалом'
+        ];
+      case 'PLAN_30_DAYS':
+        return [
+          'Финансовая таблица',
+          'ABC-анализ',
+          'Планирование поставок',
+          'Email поддержка'
+        ];
+      case 'PLAN_60_DAYS':
+        return [
+          'Полная аналитика продаж',
+          'Юнит-экономика',
+          'Рекламные кампании',
+          'Приоритетная поддержка',
+          'Экспорт отчетов'
+        ];
+      case 'PLAN_90_DAYS':
+        return [
+          'Премиум аналитика',
+          'Неограниченные отчеты',
+          'Персональный менеджер',
+          'API доступ',
+          'Индивидуальные отчеты'
+        ];
+      default:
+        return ['Базовый функционал'];
+    }
+  };
+
+  const getPlanColor = (planType) => {
+    switch (planType) {
+      case 'PLAN_FREE':
+        return 'var(--color-success)';
+      case 'PLAN_30_DAYS':
+        return 'var(--color-secondary-green)';
+      case 'PLAN_60_DAYS':
+        return 'var(--color-primary-purple)';
+      case 'PLAN_90_DAYS':
+        return 'var(--color-primary-pink)';
+      default:
+        return 'var(--color-primary-green)';
+    }
+  };
+
+  const getPlanGradient = (planType) => {
+    switch (planType) {
+      case 'PLAN_FREE':
+        return 'linear-gradient(135deg, #48DD00, #52A529)';
+      case 'PLAN_30_DAYS':
+        return 'var(--gradient-secondary)';
+      case 'PLAN_60_DAYS':
+        return 'var(--gradient-purple)';
+      case 'PLAN_90_DAYS':
+        return 'var(--gradient-pink)';
+      default:
+        return 'var(--gradient-primary)';
+    }
+  };
+
+  const getFallbackPlans = () => [
+    {
+      id: 'PLAN_FREE',
+      name: 'Бесплатный тестовый',
+      duration: '7 дней',
+      price: 0,
+      originalPrice: null,
+      discount: null,
+      features: getDefaultFeatures('PLAN_FREE'),
+      popular: false,
+      color: getPlanColor('PLAN_FREE'),
+      gradient: getPlanGradient('PLAN_FREE'),
+      isFree: true
+    },
+    {
+      id: 'PLAN_30_DAYS',
+      name: '30 дней',
+      duration: '30 дней',
+      price: 1499,
+      originalPrice: null,
+      discount: null,
+      features: getDefaultFeatures('PLAN_30_DAYS'),
+      popular: true,
+      color: getPlanColor('PLAN_30_DAYS'),
+      gradient: getPlanGradient('PLAN_30_DAYS'),
+      isFree: false
+    }
+  ];
 
   const handleSubscribe = async (planId) => {
     try {
       setProcessing(true);
       setSelectedPlan(planId);
       
-      const response = await axios.post('/api/subscription/subscribe', {
-        planType: planId
-      });
+      const plan = availablePlans.find(p => p.id === planId);
+      
+      let response;
+      if (plan?.isFree) {
+        // Для бесплатного плана используем специальный эндпоинт
+        const userEmail = user?.email;
+        if (!userEmail) {
+          showNotification('Не удалось определить email пользователя', 'error');
+          return;
+        }
+        
+        // Пробуем сначала приватный эндпоинт, потом публичный
+        try {
+          response = await axios.post('/api/subscription/create-trial', {
+            email: userEmail
+          });
+        } catch (error) {
+          if (error.response?.status === 401) {
+            // Если не авторизован, используем публичный эндпоинт
+            response = await axios.post('/api/public/subscription/free', {
+              email: userEmail
+            });
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        // Для платных планов используем стандартный эндпоинт
+        response = await axios.post('/api/subscription/create', {
+          planType: planId,
+          paymentMethod: 'card',
+          autoRenew: false
+        });
+      }
       
       if (response.data.success) {
-        // Показываем успешное сообщение
-        showNotification('Подписка успешно оформлена!', 'success');
-        await fetchSubscriptionInfo(); // Обновляем данные
+        showNotification(
+          plan?.isFree 
+            ? 'Бесплатная подписка успешно активирована!' 
+            : 'Подписка успешно оформлена!', 
+          'success'
+        );
+        await fetchData(); // Обновляем все данные
       } else {
         showNotification(response.data.message || 'Ошибка оформления подписки', 'error');
       }
     } catch (error) {
       console.error('Error subscribing:', error);
-      showNotification('Ошибка оформления подписки', 'error');
+      const errorMessage = error.response?.data?.message || 'Ошибка оформления подписки';
+      showNotification(errorMessage, 'error');
     } finally {
       setProcessing(false);
       setSelectedPlan(null);
@@ -135,7 +257,7 @@ const SubscriptionPage = () => {
       
       if (response.data.success) {
         showNotification('Подписка отменена', 'success');
-        await fetchSubscriptionInfo();
+        await fetchData();
       } else {
         showNotification(response.data.message || 'Ошибка отмены подписки', 'error');
       }
@@ -148,7 +270,6 @@ const SubscriptionPage = () => {
   };
 
   const showNotification = (message, type = 'info') => {
-    // Создаем уведомление (можно вынести в отдельный хук)
     const notification = document.createElement('div');
     notification.textContent = message;
     notification.className = `notification notification-${type}`;
@@ -171,7 +292,9 @@ const SubscriptionPage = () => {
     
     document.body.appendChild(notification);
     setTimeout(() => {
-      document.body.removeChild(notification);
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
     }, 4000);
   };
 
@@ -189,6 +312,11 @@ const SubscriptionPage = () => {
     const diffTime = end - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
+  };
+
+  const getPlanDisplayName = (planType) => {
+    const plan = availablePlans.find(p => p.id === planType);
+    return plan?.name || planType;
   };
 
   if (loading) {
@@ -215,7 +343,7 @@ const SubscriptionPage = () => {
               Подписки SellLab
             </h1>
             <p className="page-subtitle">
-              Выберите план, который подходит именно вам
+              Выберите план, который подходит именно вам. Начните с бесплатного тестирования!
             </p>
           </div>
           
@@ -227,7 +355,7 @@ const SubscriptionPage = () => {
               </div>
               <div className="subscription-details">
                 <div className="subscription-plan">
-                  {plans.find(p => p.id === subscription.planType)?.name || subscription.planType}
+                  {getPlanDisplayName(subscription.planType)}
                 </div>
                 <div className="subscription-expires">
                   До {formatDate(subscription.endDate)} ({getDaysRemaining(subscription.endDate)} дней)
@@ -240,15 +368,23 @@ const SubscriptionPage = () => {
         {/* Тарифные планы */}
         <div className="plans-section">
           <div className="plans-grid">
-            {plans.map((plan, index) => (
+            {availablePlans.map((plan, index) => (
               <div 
                 key={plan.id}
                 className={`plan-card ${plan.popular ? 'plan-card-popular' : ''} ${
+                  plan.isFree ? 'plan-card-free' : ''
+                } ${
                   subscription?.planType === plan.id && subscription?.status === 'ACTIVE' ? 'plan-card-current' : ''
                 }`}
                 style={{ '--plan-color': plan.color }}
               >
-                {plan.popular && (
+                {plan.isFree && (
+                  <div className="plan-badge plan-badge-free">
+                    <span>🎁 БЕСПЛАТНО</span>
+                  </div>
+                )}
+                
+                {plan.popular && !plan.isFree && (
                   <div className="plan-badge">
                     <span>🔥 Популярный</span>
                   </div>
@@ -262,7 +398,7 @@ const SubscriptionPage = () => {
 
                 <div className="plan-header">
                   <div className="plan-icon" style={{ background: plan.gradient }}>
-                    {index === 0 ? '🚀' : index === 1 ? '⚡' : '👑'}
+                    {plan.isFree ? '🎁' : index === 1 ? '🚀' : index === 2 ? '⚡' : '👑'}
                   </div>
                   <h3 className="plan-name">{plan.name}</h3>
                   <div className="plan-duration">{plan.duration}</div>
@@ -270,20 +406,28 @@ const SubscriptionPage = () => {
 
                 <div className="plan-pricing">
                   <div className="plan-price">
-                    <span className="price-currency">₽</span>
-                    <span className="price-amount">{plan.price.toLocaleString()}</span>
+                    {plan.isFree ? (
+                      <span className="price-free">БЕСПЛАТНО</span>
+                    ) : (
+                      <>
+                        <span className="price-currency">₽</span>
+                        <span className="price-amount">{plan.price.toLocaleString()}</span>
+                      </>
+                    )}
                   </div>
                   
-                  {plan.originalPrice > plan.price && (
+                  {plan.originalPrice && plan.originalPrice > plan.price && (
                     <div className="plan-original-price">
                       <span className="original-price">₽{plan.originalPrice.toLocaleString()}</span>
                       <span className="discount-badge">-{plan.discount}%</span>
                     </div>
                   )}
                   
-                  <div className="plan-price-per-day">
-                    ≈ ₽{Math.round(plan.price / parseInt(plan.duration))} в день
-                  </div>
+                  {!plan.isFree && (
+                    <div className="plan-price-per-day">
+                      ≈ ₽{Math.round(plan.price / parseInt(plan.duration))} в день
+                    </div>
+                  )}
                 </div>
 
                 <div className="plan-features">
@@ -309,20 +453,20 @@ const SubscriptionPage = () => {
                     </button>
                   ) : (
                     <button
-                      className="btn btn-primary"
+                      className={`btn ${plan.isFree ? 'btn-free' : 'btn-primary'}`}
                       onClick={() => handleSubscribe(plan.id)}
                       disabled={processing}
-                      style={{ background: plan.gradient }}
+                      style={!plan.isFree ? { background: plan.gradient } : {}}
                     >
                       {processing && selectedPlan === plan.id ? (
                         <>
                           <span className="loading-spinner-small"></span>
-                          Оформление...
+                          {plan.isFree ? 'Активация...' : 'Оформление...'}
                         </>
                       ) : (
                         <>
-                          <span>💎</span>
-                          Выбрать план
+                          <span>{plan.isFree ? '🎁' : '💎'}</span>
+                          {plan.isFree ? 'Попробовать бесплатно' : 'Выбрать план'}
                         </>
                       )}
                     </button>
@@ -360,7 +504,7 @@ const SubscriptionPage = () => {
                   <div className="info-icon">💰</div>
                   <div className="info-content">
                     <h4>Стоимость</h4>
-                    <p>₽{subscription.price?.toLocaleString() || 'N/A'}</p>
+                    <p>{subscription.price === 0 ? 'Бесплатно' : `₽${subscription.price?.toLocaleString() || 'N/A'}`}</p>
                   </div>
                 </div>
                 
@@ -404,6 +548,14 @@ const SubscriptionPage = () => {
           
           <div className="faq-grid">
             <div className="faq-item">
+              <h4 className="faq-question">🎁 Что включает бесплатный план?</h4>
+              <p className="faq-answer">
+                Бесплатный тестовый план дает полный доступ ко всем функциям на 7 дней. 
+                Это отличная возможность познакомиться с платформой перед покупкой.
+              </p>
+            </div>
+            
+            <div className="faq-item">
               <h4 className="faq-question">🤔 Можно ли отменить подписку?</h4>
               <p className="faq-answer">
                 Да, вы можете отменить подписку в любой момент. Доступ к премиум функциям 
@@ -416,14 +568,6 @@ const SubscriptionPage = () => {
               <p className="faq-answer">
                 Мы принимаем все основные банковские карты, а также электронные кошельки 
                 и банковские переводы.
-              </p>
-            </div>
-            
-            <div className="faq-item">
-              <h4 className="faq-question">🔄 Есть ли автопродление?</h4>
-              <p className="faq-answer">
-                Да, подписка продлевается автоматически. Вы можете отключить автопродление 
-                в настройках аккаунта в любой момент.
               </p>
             </div>
             

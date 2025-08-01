@@ -511,10 +511,13 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
                   
                   <div className="telegram-instructions">
                     <ol>
-                      <li>Найдите бота <strong>{verificationData.telegramBot}</strong> в Telegram</li>
-                      <li>Нажмите <strong>/start</strong> для начала работы</li>
-                      <li>Введите код {verificationData.generatedCode ? 'выше' : 'из Telegram'} в поле ниже</li>
+                      <li>Скопируйте код верификации выше</li>
+                      <li>Найдите бота <strong>{verificationData.telegramBot}</strong> в Telegram и нажмите <strong>/start</strong></li>
+                      <li>Вставьте скопированный код в поле ниже для подтверждения</li>
                     </ol>
+                    <div className="instruction-note">
+                      <strong>Важно:</strong> Код генерируется на нашем сайте. Просто введите его в поле ниже для верификации.
+                    </div>
                   </div>
                 </div>
               </div>

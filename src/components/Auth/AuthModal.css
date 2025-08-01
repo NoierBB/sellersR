@@ -465,6 +465,20 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.instruction-note {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(72, 221, 0, 0.1);
+  border: 1px solid rgba(72, 221, 0, 0.2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.instruction-note strong {
+  color: var(--color-success);
+}
+
 /* Поле ввода кода */
 .verification-input {
   text-align: center;

@@ -167,6 +167,10 @@ const AnalyticsPage = () => {
 
     return (
       <div className="charts-container">
+        <div className="chart-description">
+          <h2>📊 Финансовый отчет</h2>
+          <p>Анализ динамики продаж и прибыли по неделям. Зеленая область показывает общий объем продаж, фиолетовая - чистую прибыль после всех расходов.</p>
+        </div>
         <div className="chart-wrapper">
           <h3>Динамика продаж и прибыли</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -210,6 +214,10 @@ const AnalyticsPage = () => {
     
     return (
       <div className="charts-container">
+        <div className="chart-description">
+          <h2>🧮 Юнит-экономика товаров</h2>
+          <p>Анализ прибыльности отдельных товаров. Зеленые столбцы показывают маржинальность (%), фиолетовые - возврат инвестиций (ROI). Помогает определить самые выгодные товары.</p>
+        </div>
         <div className="chart-wrapper">
           <h3>Топ-10 товаров по маржинальности</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -231,25 +239,29 @@ const AnalyticsPage = () => {
     if (!analyticsData.advertising?.campaigns) return null;
     
     const data = analyticsData.advertising.campaigns.map(campaign => ({
-      name: campaign.vendorCode,
-      auto: campaign.autoExpenses,
-      auction: campaign.auctionExpenses,
-      margin: campaign.marginCpo,
-      conversion: campaign.orderConversion
+      name: campaign.campaignName || campaign.vendorCode,
+      spend: campaign.totalSpend,
+      revenue: campaign.totalRevenue,
+      roas: campaign.roas,
+      clicks: campaign.clicks
     }));
     
     return (
       <div className="charts-container">
+        <div className="chart-description">
+          <h2>📢 Рекламные кампании</h2>
+          <p>Анализ эффективности рекламных кампаний. Зеленые столбцы показывают затраты на рекламу, фиолетовые - полученную выручку. ROAS показывает возврат рекламных инвестиций.</p>
+        </div>
         <div className="chart-wrapper">
-          <h3>Расходы на рекламу</h3>
+          <h3>Расходы и выручка по кампаниям</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" fontSize={12} />
               <YAxis stroke="rgba(255,255,255,0.6)" fontSize={12} />
               <Tooltip contentStyle={{ backgroundColor: '#000037', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px' }} />
-              <Bar dataKey="auto" fill="#48DD00" name="Авто (₽)" />
-              <Bar dataKey="auction" fill="#9F3ED5" name="Аукцион (₽)" />
+              <Bar dataKey="spend" fill="#E6399B" name="Затраты (₽)" />
+              <Bar dataKey="revenue" fill="#48DD00" name="Выручка (₽)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -262,15 +274,19 @@ const AnalyticsPage = () => {
     
     const { classA, classB, classC } = analyticsData['abc-analysis'].summary;
     const pieData = [
-      { name: 'Класс A', value: classA.percent, color: '#48DD00' },
-      { name: 'Класс B', value: classB.percent, color: '#9F3ED5' },
-      { name: 'Класс C', value: classC.percent, color: '#E6399B' }
+      { name: 'Класс A (80% выручки)', value: classA.percent, color: '#48DD00' },
+      { name: 'Класс B (15% выручки)', value: classB.percent, color: '#9F3ED5' },
+      { name: 'Класс C (5% выручки)', value: classC.percent, color: '#E6399B' }
     ];
     
     return (
       <div className="charts-container">
+        <div className="chart-description">
+          <h2>📋 ABC-анализ товаров</h2>
+          <p>Классификация товаров по принципу Парето. Класс A - самые важные товары (80% выручки), класс B - средние (15%), класс C - наименее важные (5%). Помогает сосредоточиться на ключевых товарах.</p>
+        </div>
         <div className="chart-wrapper">
-          <h3>Распределение выручки</h3>
+          <h3>Распределение выручки по классам</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -280,7 +296,7 @@ const AnalyticsPage = () => {
                 outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
               >
                 {pieData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -289,6 +305,237 @@ const AnalyticsPage = () => {
               <Tooltip contentStyle={{ backgroundColor: '#000037', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px' }} />
             </PieChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  };
+
+  // Функции для рендеринга таблиц
+  const renderFinancialTable = () => {
+    if (!analyticsData.financial?.weeks) return null;
+    
+    return (
+      <div className="financial-report table-container">
+        <h2>📊 Финансовый отчет</h2>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Неделя</th>
+                <th>Дата</th>
+                <th>Выкуп ШТ</th>
+                <th>Продажи ВБ</th>
+                <th>К перечислению за товар</th>
+                <th>Логистика</th>
+                <th>Хранение</th>
+                <th>Приемка</th>
+                <th>Штраф</th>
+                <th>Удержания/реклама</th>
+                <th>К выплате</th>
+                <th>Налог</th>
+                <th>Прочие расходы</th>
+                <th>Себестоимость проданного товара</th>
+                <th>Чистая прибыль</th>
+                <th>ДРР</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsData.financial.weeks.map((week, index) => (
+                <tr key={index}>
+                  <td>{week.week}</td>
+                  <td>{week.date}</td>
+                  <td>{week.buyoutQuantity}</td>
+                  <td>{week.salesWb} ₽</td>
+                  <td>{week.toCalculateForGoods} ₽</td>
+                  <td>{week.logistics} ₽</td>
+                  <td>{week.storage} ₽</td>
+                  <td>{week.acceptance} ₽</td>
+                  <td>{week.penalty} ₽</td>
+                  <td>{week.retentions} ₽</td>
+                  <td>{week.toPay} ₽</td>
+                  <td>{week.tax} ₽</td>
+                  <td>{week.otherExpenses} ₽</td>
+                  <td>{week.costOfGoodsSold} ₽</td>
+                  <td className={week.netProfit > 0 ? 'profit-positive' : 'profit-negative'}>{week.netProfit} ₽</td>
+                  <td>{week.drr}%</td>
+                </tr>
+              ))}
+            </tbody>
+            {analyticsData.financial.totals && (
+              <tfoot>
+                <tr className="totals-row">
+                  <td><strong>Итого:</strong></td>
+                  <td>-</td>
+                  <td><strong>{analyticsData.financial.totals.totalBuyoutQuantity}</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalSalesWb} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalToCalculateForGoods} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalLogistics} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalStorage} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalAcceptance} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalPenalty} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalRetentions} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalToPay} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalTax} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalOtherExpenses} ₽</strong></td>
+                  <td><strong>{analyticsData.financial.totals.totalCostOfGoodsSold} ₽</strong></td>
+                  <td className={analyticsData.financial.totals.totalNetProfit > 0 ? 'profit-positive' : 'profit-negative'}>
+                    <strong>{analyticsData.financial.totals.totalNetProfit} ₽</strong>
+                  </td>
+                  <td><strong>{analyticsData.financial.totals.avgDrr}%</strong></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderUnitEconomicsTable = () => {
+    if (!analyticsData['unit-economics']?.items) return null;
+    
+    return (
+      <div className="unit-economics table-container">
+        <h2>🧮 Юнит экономика ВБ</h2>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Артикул ВБ</th>
+                <th>Артикул продавца</th>
+                <th>Себестоимость</th>
+                <th>Цена до СПП</th>
+                <th>% СПП</th>
+                <th>Цена после СПП</th>
+                <th>Выкуп %</th>
+                <th>Комиссия МП %</th>
+                <th>Логистика МП</th>
+                <th>Хранение МП</th>
+                <th>Налог</th>
+                <th>Выручка после налога</th>
+                <th>Валовая прибыль</th>
+                <th>Маржинальность</th>
+                <th>ROI</th>
+                <th>ROM</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsData['unit-economics'].items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.nmId}</td>
+                  <td>{item.vendorCode}</td>
+                  <td>{item.costPrice} ₽</td>
+                  <td>{item.priceBeforeSpp} ₽</td>
+                  <td>{item.sppPercent}%</td>
+                  <td>{item.priceAfterSpp} ₽</td>
+                  <td>{item.buyout}%</td>
+                  <td>{item.mpCommissionPercent}%</td>
+                  <td>{item.logisticsMp} ₽</td>
+                  <td>{item.storageMp} ₽</td>
+                  <td>{item.tax} ₽</td>
+                  <td>{item.revenueAfterTax} ₽</td>
+                  <td className={item.grossProfitFinal > 0 ? 'profit-positive' : 'profit-negative'}>{item.grossProfitFinal} ₽</td>
+                  <td>{item.finalMarginality.toFixed(1)}%</td>
+                  <td>{item.roi.toFixed(1)}%</td>
+                  <td>{item.rom.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAdvertisingTable = () => {
+    if (!analyticsData.advertising?.campaigns) return null;
+    
+    return (
+      <div className="advertising table-container">
+        <h2>📢 Рекламные кампании</h2>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>ID кампании</th>
+                <th>Название кампании</th>
+                <th>Тип</th>
+                <th>Статус</th>
+                <th>Затраты</th>
+                <th>Выручка</th>
+                <th>Клики</th>
+                <th>Показы</th>
+                <th>CTR</th>
+                <th>CPC</th>
+                <th>CR</th>
+                <th>ROAS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsData.advertising.campaigns.map((campaign, index) => (
+                <tr key={index}>
+                  <td>{campaign.campaignId}</td>
+                  <td>{campaign.campaignName}</td>
+                  <td>{campaign.campaignType}</td>
+                  <td><span className={`status-${campaign.status.toLowerCase()}`}>{campaign.status}</span></td>
+                  <td>{campaign.totalSpend.toFixed(2)} ₽</td>
+                  <td>{campaign.totalRevenue.toFixed(2)} ₽</td>
+                  <td>{campaign.clicks}</td>
+                  <td>{campaign.impressions}</td>
+                  <td>{campaign.ctr.toFixed(2)}%</td>
+                  <td>{campaign.cpc.toFixed(2)} ₽</td>
+                  <td>{campaign.cr.toFixed(2)}%</td>
+                  <td className={campaign.roas > 2 ? 'profit-positive' : 'profit-negative'}>{campaign.roas.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderABCAnalysisTable = () => {
+    if (!analyticsData['abc-analysis']?.items) return null;
+    
+    return (
+      <div className="abc-analysis table-container">
+        <h2>📋 ABC-анализ товаров</h2>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Поз.</th>
+                <th>Артикул</th>
+                <th>Номенклатура</th>
+                <th>Предмет</th>
+                <th>Заказы</th>
+                <th>Ср. цена</th>
+                <th>Выручка</th>
+                <th>% группы</th>
+                <th>Класс (группа)</th>
+                <th>% общий</th>
+                <th>Класс (общий)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsData['abc-analysis'].items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.position}</td>
+                  <td>{item.nmId}</td>
+                  <td>{item.vendorCode}</td>
+                  <td>{item.subject}</td>
+                  <td>{item.ordersCount}</td>
+                  <td>{item.avgPrice.toFixed(2)} ₽</td>
+                  <td>{item.revenue.toFixed(2)} ₽</td>
+                  <td>{item.revenuePercentInGroup.toFixed(1)}%</td>
+                  <td><span className={`class-${item.classInGroup.toLowerCase()}`}>{item.classInGroup}</span></td>
+                  <td>{item.revenuePercentTotal.toFixed(1)}%</td>
+                  <td><span className={`class-${item.classTotal.toLowerCase()}`}>{item.classTotal}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -517,11 +764,12 @@ const AnalyticsPage = () => {
               {activeTab === 'abc-analysis' && renderABCAnalysisCharts()}
             </>
           ) : (
-            <div className="table-view">
-              <p className="table-placeholder">
-                Табличный режим будет добавлен в следующих обновлениях
-              </p>
-            </div>
+            <>
+              {activeTab === 'financial' && analyticsData.financial && renderFinancialTable()}
+              {activeTab === 'unit-economics' && analyticsData['unit-economics'] && renderUnitEconomicsTable()}
+              {activeTab === 'advertising' && analyticsData.advertising && renderAdvertisingTable()}
+              {activeTab === 'abc-analysis' && analyticsData['abc-analysis'] && renderABCAnalysisTable()}
+            </>
           )}
           
           {!analyticsData[activeTab] && !loading && (
